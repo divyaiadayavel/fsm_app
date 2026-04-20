@@ -26,7 +26,7 @@ class JobCard extends StatelessWidget {
       case "high":
         return Colors.redAccent;
       case "medium":
-        return Colors.lightBlueAccent;
+        return Colors.blueAccent;
       case "low":
         return Colors.grey;
       case "pending":
@@ -36,7 +36,7 @@ class JobCard extends StatelessWidget {
       case "completed":
         return Colors.green;
       default:
-        return Colors.white54;
+        return Colors.black54;
     }
   }
 
@@ -45,7 +45,7 @@ class JobCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
@@ -72,50 +72,57 @@ class JobCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       badge(status.toUpperCase(), tagColor(status)),
                       const Spacer(),
-                      const Icon(Icons.more_vert, color: Colors.white54),
+                      const Icon(Icons.more_vert, color: Colors.black54),
                     ],
                   ),
                   const SizedBox(height: 16),
+
                   Text(
                     title,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
+
                   Text(
                     company,
-                    style: const TextStyle(fontSize: 20, color: Colors.white70),
+                    style: const TextStyle(fontSize: 20, color: Colors.black87),
                   ),
+
                   const SizedBox(height: 20),
+
                   Row(
                     children: [
                       const Icon(
                         Icons.location_on_outlined,
-                        color: Colors.white70,
+                        color: Colors.black54,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           location,
                           style: const TextStyle(
-                            color: Colors.white70,
+                            color: Colors.black87,
                             fontSize: 18,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const Divider(color: Colors.white10, height: 30),
+
+                  const Divider(color: Color(0xFFE5E7EB), height: 30),
+
                   Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 24,
-                        backgroundColor: Colors.white12,
-                        child: Icon(Icons.person, color: Colors.white),
+                        backgroundColor: const Color(0xFFEDE9FE),
+                        child: Icon(Icons.person, color: AppColors.primary),
                       ),
                       const SizedBox(width: 14),
+
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,30 +131,31 @@ class JobCard extends StatelessWidget {
                               technician,
                               style: const TextStyle(
                                 fontSize: 20,
-                                color: Colors.white,
+                                color: Colors.black,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             const Text(
                               "FIELD TECH",
                               style: TextStyle(
-                                color: Colors.white54,
+                                color: Colors.black54,
                                 fontSize: 14,
                               ),
                             ),
                           ],
                         ),
                       ),
+
                       Container(
                         height: 52,
                         width: 52,
                         decoration: BoxDecoration(
-                          color: Colors.white10,
+                          color: const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(
                           Icons.chevron_right,
-                          color: Colors.white,
+                          color: Colors.black,
                           size: 34,
                         ),
                       ),
@@ -166,7 +174,7 @@ class JobCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(.15),
+        color: color.withOpacity(.12),
         borderRadius: BorderRadius.circular(30),
       ),
       child: Text(

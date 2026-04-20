@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_ui.dart';
 import '../../data/db/database_helper.dart';
-import 'map_picker_screen.dart';
 import 'jobs_screen.dart';
+import 'map_picker_screen.dart';
 import 'technicians_screen.dart';
-import 'package:geocoding/geocoding.dart';
 
 class CreateJobScreen extends StatefulWidget {
   final VoidCallback onSaved;
@@ -29,7 +30,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   double? selectedLat;
   double? selectedLng;
-
+  bool isLoading = false;
   int currentIndex = 1;
 
   @override
@@ -43,17 +44,39 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
     setState(() {
       technicians = data;
-
       if (technicians.isNotEmpty) {
         technician = technicians.first["name"];
       }
     });
   }
 
+  Future<void> updateCoordinatesFromAddress() async {
+    final text = locationController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => isLoading = true);
+
+    try {
+      final result = await locationFromAddress("$text, Tamil Nadu, India");
+
+      if (result.isNotEmpty) {
+        setState(() {
+          selectedLat = result.first.latitude;
+          selectedLng = result.first.longitude;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
   Future<void> pickLocation() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const MapPickerScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            MapPickerScreen(initialLat: selectedLat, initialLng: selectedLng),
+      ),
     );
 
     if (result != null) {
@@ -70,9 +93,9 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     if (technician == null) return;
 
     await DatabaseHelper.instance.insertJob({
-      "title": titleController.text,
-      "customer": customerController.text,
-      "location": locationController.text,
+      "title": titleController.text.trim(),
+      "customer": customerController.text.trim(),
+      "location": locationController.text.trim(),
       "technician": technician,
       "priority": priority,
       "status": status,
@@ -86,10 +109,6 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
     if (mounted) {
       Navigator.pop(context);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Job Assigned Successfully")),
-      );
     }
   }
 
@@ -122,125 +141,62 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.menu, color: Colors.white, size: 28),
-                  const SizedBox(width: AppUI.gapSm),
+                  const Icon(Icons.menu, color: Colors.black, size: 26),
+                  const SizedBox(width: 10),
                   const Text(
-                    "Command Center",
+                    "Create Job",
                     style: TextStyle(
-                      fontSize: AppUI.title,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                   const Spacer(),
-                  Container(
-                    height: AppUI.avatarSize,
-                    width: AppUI.avatarSize,
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(AppUI.radiusSm),
-                    ),
-                    child: const Icon(Icons.person, color: Colors.white),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.black),
                   ),
                 ],
               ),
 
-              const SizedBox(height: AppUI.gapLg),
+              const SizedBox(height: 18),
 
               Container(
-                padding: AppUI.card,
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: AppColors.card,
-                  borderRadius: BorderRadius.circular(AppUI.radiusLg),
+                  borderRadius: BorderRadius.circular(22),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "NEW ASSIGNMENT",
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: AppUI.caption,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                              SizedBox(height: AppUI.gapXs),
-                              Text(
-                                "Create Job",
-                                style: TextStyle(
-                                  fontSize: AppUI.heading,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            height: 52,
-                            width: 52,
-                            decoration: const BoxDecoration(
-                              color: Colors.white10,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: AppUI.gapLg),
-                    divider(),
-
-                    fieldLabel("JOB TITLE"),
+                    sectionTitle("JOB TITLE"),
                     inputField(titleController, "Enter job title"),
 
-                    fieldLabel("CUSTOMER NAME"),
-                    inputField(
-                      customerController,
-                      "Enter customer",
-                      icon: Icons.person_outline,
-                    ),
-                    fieldLabel("LOCATION"),
+                    sectionTitle("CUSTOMER NAME"),
+                    inputField(customerController, "Enter customer name"),
+
+                    sectionTitle("LOCATION"),
+                    locationField(),
+
+                    const SizedBox(height: 12),
                     GestureDetector(onTap: pickLocation, child: mapCard()),
 
-                    const SizedBox(height: AppUI.gapSm),
-
-                    inputField(locationController, "Enter location"),
-
-                    fieldLabel("ASSIGN TECHNICIAN"),
+                    sectionTitle("ASSIGN TECHNICIAN"),
                     technicianDropdown(),
 
-                    fieldLabel("PRIORITY LEVEL"),
+                    sectionTitle("PRIORITY LEVEL"),
                     Row(
                       children: [
-                        priorityButton("Low"),
-                        const SizedBox(width: AppUI.gapXs),
-                        priorityButton("Medium"),
-                        const SizedBox(width: AppUI.gapXs),
-                        priorityButton("High"),
+                        Expanded(child: priorityButton("Low")),
+                        const SizedBox(width: 8),
+                        Expanded(child: priorityButton("Medium")),
+                        const SizedBox(width: 8),
+                        Expanded(child: priorityButton("High")),
                       ],
                     ),
 
-                    fieldLabel("CURRENT STATUS"),
-                    dropdownField(
-                      value: status,
-                      items: const ["Pending", "In Progress", "Completed"],
-                      onChanged: (v) => setState(() => status = v!),
-                    ),
-
-                    const SizedBox(height: AppUI.gapLg),
+                    const SizedBox(height: 22),
 
                     actionButton(
                       title: "Save Job",
@@ -248,7 +204,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                       onTap: saveJob,
                     ),
 
-                    const SizedBox(height: AppUI.gapSm),
+                    const SizedBox(height: 12),
 
                     actionButton(
                       title: "Cancel",
@@ -266,9 +222,9 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: onNavTap,
-        backgroundColor: AppColors.card,
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.white54,
+        unselectedItemColor: Colors.black54,
+        backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
@@ -286,49 +242,67 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  Widget divider() {
-    return Container(
-      height: 1,
-      margin: const EdgeInsets.only(bottom: AppUI.gapMd),
-      color: Colors.white10,
-    );
-  }
-
-  Widget fieldLabel(String text) {
+  Widget sectionTitle(String text) {
     return Padding(
-      padding: const EdgeInsets.only(top: AppUI.gapSm, bottom: AppUI.gapSm),
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
       child: Text(
         text,
         style: const TextStyle(
-          color: Colors.white70,
-          fontSize: AppUI.caption,
-          letterSpacing: 1.4,
-          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Colors.black87,
+          letterSpacing: 1,
         ),
       ),
     );
   }
 
-  Widget inputField(
-    TextEditingController controller,
-    String hint, {
-    IconData? icon,
-  }) {
+  Widget inputField(TextEditingController controller, String hint) {
     return Container(
-      height: AppUI.inputHeight,
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(AppUI.radiusMd),
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: TextField(
         controller: controller,
-        style: const TextStyle(color: Colors.white, fontSize: AppUI.body),
+        style: const TextStyle(color: Colors.black),
         decoration: InputDecoration(
-          prefixIcon: icon != null ? Icon(icon, color: Colors.white38) : null,
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white70),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+          hintText: hint,
+          hintStyle: TextStyle(color: AppColors.grey),
+        ),
+      ),
+    );
+  }
+
+  Widget locationField() {
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: TextField(
+        controller: locationController,
+        onSubmitted: (_) => updateCoordinatesFromAddress(),
+        style: const TextStyle(color: Colors.black),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: "Enter address",
+          hintStyle: TextStyle(color: AppColors.grey),
+          suffixIcon: IconButton(
+            onPressed: updateCoordinatesFromAddress,
+            icon: isLoading
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(Icons.search, color: AppColors.primary),
+          ),
         ),
       ),
     );
@@ -336,36 +310,21 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Widget mapCard() {
     return Container(
-      height: 130,
+      height: 110,
+      width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppUI.radiusMd),
-        image: const DecorationImage(
-          image: AssetImage("assets/images/map_bg.png"),
-          fit: BoxFit.cover,
-        ),
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Align(
-        alignment: Alignment.bottomLeft,
-        child: Padding(
-          padding: const EdgeInsets.all(AppUI.gapSm),
-          child: Row(
-            children: [
-              const Icon(Icons.location_on, color: Colors.white),
-              const SizedBox(width: AppUI.gapXs),
-              Expanded(
-                child: Text(
-                  locationController.text.isEmpty
-                      ? "Tap to select location"
-                      : locationController.text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: AppUI.body,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+      child: Center(
+        child: Text(
+          selectedLat == null
+              ? "Search address to show location"
+              : "Lat: ${selectedLat!.toStringAsFixed(4)}\nLng: ${selectedLng!.toStringAsFixed(4)}",
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -374,17 +333,17 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Widget technicianDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppUI.gapSm),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(AppUI.radiusMd),
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: DropdownButton<String>(
         value: technician,
-        dropdownColor: AppColors.card,
         underline: const SizedBox(),
         isExpanded: true,
-        style: const TextStyle(color: Colors.white, fontSize: AppUI.body),
+        dropdownColor: Colors.white,
+        style: const TextStyle(color: Colors.black),
         items: technicians.map((e) {
           return DropdownMenuItem<String>(
             value: e["name"],
@@ -396,51 +355,23 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  Widget dropdownField({
-    required String value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppUI.gapSm),
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(AppUI.radiusMd),
-      ),
-      child: DropdownButton<String>(
-        value: value,
-        dropdownColor: AppColors.card,
-        underline: const SizedBox(),
-        isExpanded: true,
-        style: const TextStyle(color: Colors.white, fontSize: AppUI.body),
-        items: items
-            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-            .toList(),
-        onChanged: onChanged,
-      ),
-    );
-  }
-
   Widget priorityButton(String value) {
     final active = priority == value;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => priority = value),
-        child: Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: active ? AppColors.primary : Colors.black26,
-            borderRadius: BorderRadius.circular(AppUI.radiusSm),
-          ),
-          child: Center(
-            child: Text(
-              value.toUpperCase(),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: AppUI.body,
-              ),
+    return GestureDetector(
+      onTap: () => setState(() => priority = value),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: active ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -456,23 +387,18 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: AppUI.buttonHeight,
+        height: 54,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppUI.radiusMd),
-          gradient: primary
-              ? const LinearGradient(
-                  colors: [Color(0xFFCFCBFF), Color(0xFF6F63FF)],
-                )
-              : null,
-          color: primary ? null : Colors.white10,
+          color: primary ? AppColors.primary : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Center(
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: AppUI.subTitle,
+            style: TextStyle(
+              color: primary ? Colors.white : Colors.black,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              fontSize: 16,
             ),
           ),
         ),

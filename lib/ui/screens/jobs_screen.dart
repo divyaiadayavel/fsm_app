@@ -16,7 +16,6 @@ class _JobsScreenState extends State<JobsScreen> {
   List<Map<String, dynamic>> filteredJobs = [];
 
   final searchController = TextEditingController();
-
   String selectedStatus = "All";
 
   @override
@@ -77,19 +76,19 @@ class _JobsScreenState extends State<JobsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: [
-                  const Icon(
+                children: const [
+                  Icon(
                     Icons.work_outline,
-                    color: Colors.white,
+                    color: Colors.black,
                     size: AppUI.subTitle,
                   ),
-                  const SizedBox(width: AppUI.gapSm),
-                  const Text(
+                  SizedBox(width: AppUI.gapSm),
+                  Text(
                     "Jobs",
                     style: TextStyle(
                       fontSize: AppUI.title,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                 ],
@@ -97,25 +96,24 @@ class _JobsScreenState extends State<JobsScreen> {
 
               const SizedBox(height: AppUI.gapMd),
 
-              // Search Bar
               Container(
                 height: AppUI.inputHeight,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(AppUI.radiusMd),
                 ),
                 child: TextField(
                   controller: searchController,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Colors.black,
                     fontSize: AppUI.body,
                   ),
                   decoration: const InputDecoration(
-                    icon: Icon(Icons.search, color: Colors.white54),
+                    icon: Icon(Icons.search, color: Colors.black54),
                     hintText: "Search jobs...",
                     hintStyle: TextStyle(
-                      color: Colors.white38,
+                      color: Colors.black45,
                       fontSize: AppUI.body,
                     ),
                     border: InputBorder.none,
@@ -125,7 +123,6 @@ class _JobsScreenState extends State<JobsScreen> {
 
               const SizedBox(height: AppUI.gapSm),
 
-              // Filter Chips
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -147,7 +144,7 @@ class _JobsScreenState extends State<JobsScreen> {
                         child: Text(
                           "No jobs found",
                           style: TextStyle(
-                            color: Colors.white54,
+                            color: Colors.black54,
                             fontSize: AppUI.body,
                           ),
                         ),
@@ -157,17 +154,14 @@ class _JobsScreenState extends State<JobsScreen> {
                         itemBuilder: (context, index) {
                           final job = filteredJobs[index];
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: AppUI.gapSm),
-                            child: JobCard(
-                              title: job["title"],
-                              company: job["customer"],
-                              location: job["location"],
-                              technician: job["technician"],
-                              priority: job["priority"],
-                              status: job["status"],
-                              sideColor: getSideColor(job["priority"]),
-                            ),
+                          return JobCard(
+                            title: job["title"],
+                            company: job["customer"],
+                            location: job["location"],
+                            technician: job["technician"],
+                            priority: job["priority"],
+                            status: job["status"],
+                            sideColor: getSideColor(job["priority"]),
                           );
                         },
                       ),
@@ -192,13 +186,13 @@ class _JobsScreenState extends State<JobsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: active ? AppColors.primary : AppColors.card,
+            color: active ? AppColors.primary : Colors.white,
             borderRadius: BorderRadius.circular(AppUI.radiusLg),
           ),
           child: Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: active ? Colors.white : Colors.black,
               fontSize: AppUI.caption,
               fontWeight: FontWeight.w600,
             ),

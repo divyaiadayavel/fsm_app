@@ -3,7 +3,6 @@ import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
-
   static Database? _database;
 
   DatabaseHelper._init();
@@ -15,6 +14,8 @@ class DatabaseHelper {
     if (_database != null) return _database!;
 
     _database = await _initDB('fsm.db');
+    await insertDefaultAdmin();
+
     return _database!;
   }
 
@@ -23,17 +24,30 @@ class DatabaseHelper {
   // ===============================
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
-
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   // ===============================
   // CREATE TABLES
   // ===============================
   Future<void> _createDB(Database db, int version) async {
-    // JOBS TABLE
+    await db.execute('''
+      CREATE TABLE users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        email TEXT UNIQUE,
+        password TEXT,
+        role TEXT
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE jobs(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,39 +62,147 @@ class DatabaseHelper {
       )
     ''');
 
-    // TECHNICIANS TABLE
     await db.execute('''
       CREATE TABLE technicians(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
-        email TEXT,
+        email TEXT UNIQUE,
         phone TEXT,
         role TEXT,
-        jobs INTEGER,
-        online INTEGER
+        jobs INTEGER DEFAULT 0,
+        online INTEGER DEFAULT 0
       )
     ''');
   }
 
-  // =====================================================
-  // JOB METHODS
-  // =====================================================
+  // ===============================
+  // DATABASE UPGRADE
+  // ===============================
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS users(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT,
+          email TEXT UNIQUE,
+          password TEXT,
+          role TEXT
+        )
+      ''');
 
-  Future<int> insertJob(Map<String, dynamic> data) async {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS jobs(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT,
+          customer TEXT,
+          location TEXT,
+          technician TEXT,
+          priority TEXT,
+          status TEXT,
+          lat REAL,
+          lng REAL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS technicians(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT,
+          email TEXT UNIQUE,
+          phone TEXT,
+          role TEXT,
+          jobs INTEGER DEFAULT 0,
+          online INTEGER DEFAULT 0
+        )
+      ''');
+    }
+  }
+
+  // ===============================
+  // DEFAULT ADMIN
+  // ===============================
+  Future<void> insertDefaultAdmin() async {
+    final db = _database ?? await database;
+
+    const adminEmail = 'divyabharathi@catalystack.com';
+    const adminPassword = 'Rdivya@0108';
+
+    final result = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [adminEmail],
+      limit: 1,
+    );
+
+    if (result.isEmpty) {
+      await db.insert('users', {
+        'name': 'Divya',
+        'email': adminEmail,
+        'password': adminPassword,
+        'role': 'admin',
+      });
+    }
+  }
+
+  // ===============================
+  // LOGIN USER
+  // ===============================
+  Future<Map<String, dynamic>?> loginUser(String email, String password) async {
     final db = await database;
 
+    final result = await db.query(
+      'users',
+      where: 'email = ? AND password = ?',
+      whereArgs: [email.trim(), password.trim()],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return result.first;
+    }
+
+    return null;
+  }
+
+  // ===============================
+  // USERS
+  // ===============================
+  Future<int> insertUser(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('users', data);
+  }
+
+  Future<List<Map<String, dynamic>>> getUsers() async {
+    final db = await database;
+    return await db.query('users', orderBy: 'id DESC');
+  }
+
+  Future<int> updateUserPassword(String email, String newPassword) async {
+    final db = await database;
+
+    return await db.update(
+      'users',
+      {'password': newPassword},
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+  }
+
+  // ===============================
+  // JOBS
+  // ===============================
+  Future<int> insertJob(Map<String, dynamic> data) async {
+    final db = await database;
     return await db.insert('jobs', data);
   }
 
   Future<List<Map<String, dynamic>>> getJobs() async {
     final db = await database;
-
     return await db.query('jobs', orderBy: 'id DESC');
   }
 
   Future<int> deleteJob(int id) async {
     final db = await database;
-
     return await db.delete('jobs', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -90,19 +212,16 @@ class DatabaseHelper {
     return await db.update('jobs', data, where: 'id = ?', whereArgs: [id]);
   }
 
-  // =====================================================
-  // TECHNICIAN METHODS
-  // =====================================================
-
+  // ===============================
+  // TECHNICIANS
+  // ===============================
   Future<int> insertTechnician(Map<String, dynamic> row) async {
     final db = await database;
-
     return await db.insert('technicians', row);
   }
 
   Future<List<Map<String, dynamic>>> getTechnicians() async {
     final db = await database;
-
     return await db.query('technicians', orderBy: 'id DESC');
   }
 
@@ -123,6 +242,9 @@ class DatabaseHelper {
     );
   }
 
+  // ===============================
+  // JOB COUNT UPDATE
+  // ===============================
   Future<int> updateJobsCount(int id, int jobs) async {
     final db = await database;
 
@@ -135,7 +257,7 @@ class DatabaseHelper {
   }
 
   // ===============================
-  // FIND TECHNICIAN BY NAME
+  // FIND TECH BY NAME
   // ===============================
   Future<List<Map<String, dynamic>>> getTechnicianByName(String name) async {
     final db = await database;
@@ -144,7 +266,7 @@ class DatabaseHelper {
   }
 
   // ===============================
-  // INCREASE JOB COUNT BY NAME
+  // INCREASE JOB COUNT
   // ===============================
   Future<void> increaseTechnicianJobs(String name) async {
     final db = await database;
@@ -158,25 +280,23 @@ class DatabaseHelper {
     if (result.isNotEmpty) {
       final tech = result.first;
 
-      final id = tech["id"] as int;
-
-      final currentJobs = tech["jobs"] as int? ?? 0;
+      final id = tech['id'] as int;
+      final currentJobs = tech['jobs'] as int? ?? 0;
 
       await db.update(
         'technicians',
-        {"jobs": currentJobs + 1},
+        {'jobs': currentJobs + 1},
         where: 'id = ?',
         whereArgs: [id],
       );
     }
   }
 
-  // =====================================================
-  // OPTIONAL HELPERS
-  // =====================================================
-
-  Future close() async {
+  // ===============================
+  // CLOSE DB
+  // ===============================
+  Future<void> close() async {
     final db = await database;
-    db.close();
+    await db.close();
   }
 }

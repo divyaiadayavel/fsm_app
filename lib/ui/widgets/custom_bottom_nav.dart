@@ -29,14 +29,14 @@ class CustomBottomNav extends StatelessWidget {
         children: [
           Icon(
             icon,
-            color: active ? AppColors.primary : Colors.white54,
+            color: active ? AppColors.primary : Colors.black54,
             size: 24,
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              color: active ? AppColors.primary : Colors.white54,
+              color: active ? AppColors.primary : Colors.black54,
               fontSize: AppUI.caption,
               fontWeight: FontWeight.w600,
               letterSpacing: .5,
@@ -58,9 +58,9 @@ class CustomBottomNav extends StatelessWidget {
           color: AppColors.primary,
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(.45),
-              blurRadius: 18,
-              spreadRadius: 2,
+              color: AppColors.primary.withOpacity(.25),
+              blurRadius: 12,
+              spreadRadius: 1,
             ),
           ],
         ),
@@ -75,8 +75,8 @@ class CustomBottomNav extends StatelessWidget {
       height: 82,
       padding: const EdgeInsets.symmetric(horizontal: AppUI.gapMd),
       decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(top: BorderSide(color: Colors.white10)),
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
       ),
       child: SafeArea(
         top: false,

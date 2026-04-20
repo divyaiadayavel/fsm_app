@@ -23,10 +23,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
   Future<void> loadTechnicians() async {
     final data = await DatabaseHelper.instance.getTechnicians();
-
-    setState(() {
-      technicians = data;
-    });
+    setState(() => technicians = data);
   }
 
   Future<void> deleteTechnician(int id) async {
@@ -38,36 +35,33 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.card,
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppUI.radiusMd),
         ),
         title: const Text(
           "Delete Technician?",
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.black,
             fontSize: AppUI.subTitle,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: const Text(
           "Are you sure to delete this technician?",
-          style: TextStyle(color: Colors.white70, fontSize: AppUI.body),
+          style: TextStyle(color: Colors.black87),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel", style: TextStyle(fontSize: AppUI.body)),
+            child: const Text("Cancel"),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await deleteTechnician(id);
             },
-            child: const Text(
-              "Delete",
-              style: TextStyle(color: Colors.red, fontSize: AppUI.body),
-            ),
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -86,9 +80,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
       ),
     );
 
-    if (result == true) {
-      loadTechnicians();
-    }
+    if (result == true) loadTechnicians();
   }
 
   @override
@@ -96,7 +88,6 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
     final activeCount = technicians
         .where((e) => (e["online"] ?? 0) == 1)
         .length;
-
     final totalCount = technicians.length;
 
     return Scaffold(
@@ -108,14 +99,14 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.menu, color: Colors.white, size: 28),
+                  const Icon(Icons.menu, color: Colors.black, size: 28),
                   const SizedBox(width: AppUI.gapSm),
                   const Text(
                     "Command Center",
                     style: TextStyle(
                       fontSize: AppUI.title,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                   const Spacer(),
@@ -123,10 +114,10 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
                     height: AppUI.avatarSize,
                     width: AppUI.avatarSize,
                     decoration: BoxDecoration(
-                      color: Colors.white10,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(AppUI.radiusSm),
                     ),
-                    child: const Icon(Icons.person, color: Colors.white),
+                    child: const Icon(Icons.person, color: Colors.black),
                   ),
                 ],
               ),
@@ -138,7 +129,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
                 style: TextStyle(
                   fontSize: AppUI.heading,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.black,
                 ),
               ),
 
@@ -146,7 +137,10 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
               const Text(
                 "Managing field leads and logistics teams",
-                style: TextStyle(color: Colors.white70, fontSize: AppUI.body),
+                style: TextStyle(
+                  color: Color(0xFF6B7280),
+                  fontSize: AppUI.body,
+                ),
               ),
 
               const SizedBox(height: AppUI.gapLg),
@@ -156,16 +150,8 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
                 child: Container(
                   height: 72,
                   decoration: BoxDecoration(
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(AppUI.radiusLg),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFCAC5FF), Color(0xFF7267FF)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.deepPurple.withOpacity(.35),
-                        blurRadius: 18,
-                      ),
-                    ],
                   ),
                   child: const Center(
                     child: Text(
@@ -173,7 +159,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
                       style: TextStyle(
                         fontSize: AppUI.subTitle,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -200,16 +186,13 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
                 Container(
                   padding: const EdgeInsets.all(30),
                   decoration: BoxDecoration(
-                    color: AppColors.card,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(AppUI.radiusMd),
                   ),
                   child: const Center(
                     child: Text(
                       "No Technicians Added",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: AppUI.body,
-                      ),
+                      style: TextStyle(color: Color(0xFF6B7280)),
                     ),
                   ),
                 ),
@@ -238,7 +221,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
       height: 130,
       padding: AppUI.card,
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppUI.radiusLg),
       ),
       child: Column(
@@ -247,9 +230,9 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white60,
-              letterSpacing: 1.4,
+              color: Color(0xFF6B7280),
               fontSize: AppUI.caption,
+              letterSpacing: 1.4,
             ),
           ),
           const Spacer(),
@@ -258,7 +241,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
             style: const TextStyle(
               fontSize: AppUI.heading,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Colors.black,
             ),
           ),
         ],

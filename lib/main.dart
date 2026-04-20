@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'core/theme/app_theme.dart';
-import 'ui/screens/main_navigation.dart';
+import 'package:fsm_app/views/auth/login_screen.dart';
 
 void main() {
-  runApp(const FSMApp());
+  runApp(const ProviderScope(child: FSMApp()));
 }
 
 class FSMApp extends StatelessWidget {
@@ -17,7 +19,9 @@ class FSMApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
-      home: const MainNavigation(),
+
+      // IMPORTANT: Start with LoginScreen, not MainNavigation
+      home: const LoginScreen(),
     );
   }
 }

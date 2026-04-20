@@ -24,17 +24,17 @@ class TechnicianTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppUI.gapSm),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppUI.radiusLg),
       ),
       child: Row(
         children: [
           Stack(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 28,
-                backgroundColor: Colors.white12,
-                child: Icon(Icons.person, color: Colors.white, size: 30),
+                backgroundColor: const Color(0xFFEDE9FE),
+                child: Icon(Icons.person, color: AppColors.primary, size: 30),
               ),
               Positioned(
                 right: 2,
@@ -45,7 +45,7 @@ class TechnicianTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: online ? Colors.green : Colors.grey,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.card, width: 2),
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
                 ),
               ),
@@ -65,7 +65,7 @@ class TechnicianTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                 ),
 
@@ -76,7 +76,7 @@ class TechnicianTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white60,
+                    color: Color(0xFF6B7280),
                     fontSize: AppUI.caption,
                   ),
                 ),
@@ -85,7 +85,7 @@ class TechnicianTile extends StatelessWidget {
 
                 Text(
                   phone,
-                  style: const TextStyle(color: Colors.white38, fontSize: 13),
+                  style: const TextStyle(color: Colors.black54, fontSize: 13),
                 ),
               ],
             ),
@@ -101,14 +101,13 @@ class TechnicianTile extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white10,
+                  color: const Color(0xFFEDE9FE),
                   borderRadius: BorderRadius.circular(AppUI.radiusSm),
                 ),
                 child: Text(
                   "$jobs Jobs",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: AppUI.caption,
+                  style: TextStyle(
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -116,7 +115,7 @@ class TechnicianTile extends StatelessWidget {
 
               const SizedBox(height: AppUI.gapXs),
 
-              const Icon(Icons.chevron_right, color: Colors.white54),
+              const Icon(Icons.chevron_right, color: Colors.black54),
             ],
           ),
         ],

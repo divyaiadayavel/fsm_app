@@ -29,7 +29,7 @@ class RecentJobTile extends StatelessWidget {
       case "Cancelled":
         return Colors.red;
       default:
-        return Colors.white54;
+        return Colors.grey;
     }
   }
 
@@ -41,13 +41,20 @@ class RecentJobTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(AppUI.radiusMd),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: Colors.white10,
-            child: Icon(icon, color: Colors.white, size: AppUI.body),
+            backgroundColor: const Color(0xFFEDE9FE),
+            child: Icon(icon, color: AppColors.primary, size: AppUI.body),
           ),
 
           const SizedBox(width: AppUI.gapSm),
@@ -63,7 +70,7 @@ class RecentJobTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                 ),
 
@@ -73,7 +80,10 @@ class RecentJobTile extends StatelessWidget {
                   "$location • $time",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -84,7 +94,7 @@ class RecentJobTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: getStatusColor().withOpacity(.15),
+              color: getStatusColor().withOpacity(.12),
               borderRadius: BorderRadius.circular(AppUI.radiusLg),
             ),
             child: Text(

@@ -6,15 +6,16 @@ import '../../core/constants/app_ui.dart';
 import '../../data/db/database_helper.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/recent_job_tile.dart';
+import 'package:fsm_app/views/auth/login_screen.dart';
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+class AdminDashboard extends StatefulWidget {
+  const AdminDashboard({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _AdminDashboardState extends State<AdminDashboard> {
   List<Map<String, dynamic>> jobs = [];
 
   int total = 0;
@@ -58,12 +59,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
   }
 
+  // ===============================
+  // FIXED LOGOUT (SAFE NAVIGATION)
+  // ===============================
+  Future<void> logout() async {
+    if (!mounted) return;
+
+    final bool? confirmLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Logout"),
+          content: const Text("Are you sure you want to logout?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: const Text("Yes"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmLogout == true) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final values = getChartValues();
 
     return Scaffold(
       backgroundColor: AppColors.background,
+
+      appBar: AppBar(
+        title: const Text("Admin Dashboard"),
+        actions: [
+          IconButton(icon: const Icon(Icons.logout), onPressed: logout),
+        ],
+      ),
+
       body: SafeArea(
         child: Padding(
           padding: AppUI.screen,
@@ -71,14 +119,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.menu, color: Colors.white, size: AppUI.title),
+                  Icon(Icons.menu, color: Colors.black, size: AppUI.title),
                   const SizedBox(width: AppUI.gapSm),
-                  Text(
+                  const Text(
                     "Command Center",
                     style: TextStyle(
                       fontSize: AppUI.title,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                   const Spacer(),
@@ -86,20 +134,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     height: AppUI.avatarSize,
                     width: AppUI.avatarSize,
                     decoration: BoxDecoration(
-                      color: Colors.white10,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(AppUI.radiusSm),
                     ),
-                    child: const Icon(Icons.person, color: Colors.white),
+                    child: const Icon(Icons.person, color: Colors.black),
                   ),
                 ],
               ),
 
               const SizedBox(height: AppUI.gapLg),
 
-              Text(
+              const Text(
                 "OPERATIONAL OVERVIEW",
                 style: TextStyle(
-                  color: Colors.white54,
+                  color: Color(0xFF6B7280),
                   letterSpacing: 2,
                   fontSize: AppUI.caption,
                   fontWeight: FontWeight.w600,
@@ -108,12 +156,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               const SizedBox(height: AppUI.gapXs),
 
-              Text(
+              const Text(
                 "Systems Active",
                 style: TextStyle(
                   fontSize: AppUI.heading,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.black,
                 ),
               ),
 
@@ -166,46 +214,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Job Status Distribution",
-                            style: TextStyle(
-                              fontSize: AppUI.subTitle,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        popupFilter(filter, (value) {
-                          setState(() {
-                            filter = value;
-                          });
-                        }),
-                      ],
+                    const Text(
+                      "Job Status Distribution",
+                      style: TextStyle(
+                        fontSize: AppUI.subTitle,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
                     ),
-
                     const SizedBox(height: AppUI.gapMd),
 
                     Expanded(
                       child: BarChart(
                         BarChartData(
                           alignment: BarChartAlignment.spaceAround,
-                          maxY: values.isEmpty
+                          maxY: (values.isEmpty || values.every((e) => e == 0))
                               ? 5
                               : values.reduce((a, b) => a > b ? a : b) + 2,
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval: 1,
-                            getDrawingHorizontalLine: (value) {
-                              return FlLine(
-                                color: Colors.white10,
-                                strokeWidth: 1,
-                              );
-                            },
-                          ),
+                          gridData: FlGridData(show: true),
                           borderData: FlBorderData(show: false),
                           titlesData: FlTitlesData(
                             topTitles: AxisTitles(
@@ -213,47 +239,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             rightTitles: AxisTitles(
                               sideTitles: SideTitles(showTitles: false),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 28,
-                                interval: 1,
-                                getTitlesWidget: (value, meta) {
-                                  return Text(
-                                    value.toInt().toString(),
-                                    style: TextStyle(
-                                      color: Colors.white38,
-                                      fontSize: AppUI.caption,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  const labels = [
-                                    "PEND",
-                                    "PROG",
-                                    "COMP",
-                                    "CANC",
-                                  ];
-
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Text(
-                                      labels[value.toInt()],
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: AppUI.caption,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
                             ),
                           ),
                           barGroups: [
@@ -273,21 +258,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               Row(
                 children: [
-                  Text(
+                  const Text(
                     "Recent Jobs",
                     style: TextStyle(
                       fontSize: AppUI.title,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                   const Spacer(),
                   TextButton(
                     onPressed: () {},
-                    child: Text(
+                    child: const Text(
                       "View All",
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: AppColors.primary,
                         fontSize: AppUI.body,
                       ),
                     ),
@@ -304,11 +289,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: AppColors.card,
                     borderRadius: BorderRadius.circular(AppUI.radiusMd),
                   ),
-                  child: Center(
+                  child: const Center(
                     child: Text(
                       "No jobs created yet",
                       style: TextStyle(
-                        color: Colors.white54,
+                        color: Color(0xFF6B7280),
                         fontSize: AppUI.body,
                       ),
                     ),
@@ -327,34 +312,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget popupFilter(String current, Function(String) onSelect) {
-    return PopupMenuButton<String>(
-      color: AppColors.background,
-      onSelected: onSelect,
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: "Today", child: Text("Today")),
-        PopupMenuItem(value: "Weekly", child: Text("Weekly")),
-        PopupMenuItem(value: "Monthly", child: Text("Monthly")),
-        PopupMenuItem(value: "Yearly", child: Text("Yearly")),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(AppUI.radiusSm),
-        ),
-        child: Text(
-          current.toUpperCase(),
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: AppUI.caption,
-            fontWeight: FontWeight.bold,
           ),
         ),
       ),
