@@ -23,7 +23,9 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
   Future<void> loadTechnicians() async {
     final data = await DatabaseHelper.instance.getTechnicians();
-    setState(() => technicians = data);
+    if (mounted) {
+      setState(() => technicians = data);
+    }
   }
 
   Future<void> deleteTechnician(int id) async {
@@ -74,13 +76,45 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
       MaterialPageRoute(
         builder: (_) => AddTechnicianScreen(
           onSave: (data) async {
-            await DatabaseHelper.instance.insertTechnician(data);
+            try {
+              final db = DatabaseHelper.instance;
+
+              // ✅ Save to technicians table
+              await db.insertTechnician({
+                "name": data["name"],
+                "email": data["email"],
+                "phone": data["phone"],
+                "role": data["role"],
+                "jobs": data["jobs"],
+                "online": data["online"],
+              });
+
+              // ✅ Save to users table for login
+              await db.insertUser({
+                "name": data["name"],
+                "email": data["email"],
+                "password": data["password"],
+                "role": "technician",
+              });
+
+              await loadTechnicians();
+            } catch (e) {
+              debugPrint("Save Technician Error: $e");
+
+              if (mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text("Error: $e")));
+              }
+            }
           },
         ),
       ),
     );
 
-    if (result == true) loadTechnicians();
+    if (result == true) {
+      await loadTechnicians();
+    }
   }
 
   @override
@@ -88,6 +122,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
     final activeCount = technicians
         .where((e) => (e["online"] ?? 0) == 1)
         .length;
+
     final totalCount = technicians.length;
 
     return Scaffold(

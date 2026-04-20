@@ -38,9 +38,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && mounted) {
       final user = ref.read(authControllerProvider).user;
 
-      // ==========================
-      // ROLE BASED NAVIGATION (FIXED)
-      // ==========================
       if (user != null && user["role"] == "admin") {
         Navigator.pushReplacement(
           context,
@@ -49,7 +46,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const TechnicianDashboardScreen()),
+          MaterialPageRoute(
+            builder: (_) =>
+                TechnicianDashboardScreen(technicianEmail: user?["email"]),
+          ),
         );
       }
     } else {
@@ -91,14 +91,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: Colors.black,
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
                     const Text(
                       "Sign in to continue",
                       style: TextStyle(fontSize: 15, color: Colors.black54),
                     ),
-
                     const SizedBox(height: 30),
 
                     const Text(
@@ -108,7 +105,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: Colors.black,
                       ),
                     ),
-
                     const SizedBox(height: 8),
 
                     TextFormField(
@@ -130,7 +126,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: Colors.black,
                       ),
                     ),
-
                     const SizedBox(height: 8),
 
                     TextFormField(

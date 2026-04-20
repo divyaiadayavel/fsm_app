@@ -31,7 +31,9 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
     final password = passwordController.text.trim();
     final phone = phoneController.text.trim();
 
-    if (name.isEmpty) return showMsg("Enter technician name");
+    if (name.isEmpty) {
+      return showMsg("Enter technician name");
+    }
 
     if (!RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
       return showMsg("Enter valid email");
@@ -68,29 +70,86 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
   }
 
   @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: AppUI.screen,
           child: ListView(
             children: [
+              const SizedBox(height: 8),
+
               const Text(
                 "Add Technician",
                 style: TextStyle(
-                  fontSize: AppUI.title,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
               ),
-              const SizedBox(height: AppUI.gapMd),
+
+              const SizedBox(height: 10),
+
               const Text(
                 "Create and manage your field workforce",
-                style: TextStyle(color: Color(0xFF6B7280)),
+                style: TextStyle(fontSize: 16, color: Colors.black54),
               ),
-              const SizedBox(height: AppUI.gapLg),
-              card(),
+
+              const SizedBox(height: 30),
+
+              inputField(controller: nameController, hint: "Full Name"),
+
+              const SizedBox(height: 18),
+
+              inputField(
+                controller: emailController,
+                hint: "Email Address",
+                keyboardType: TextInputType.emailAddress,
+              ),
+
+              const SizedBox(height: 18),
+
+              passwordField(),
+
+              const SizedBox(height: 18),
+
+              inputField(
+                controller: phoneController,
+                hint: "Phone Number",
+                keyboardType: TextInputType.phone,
+              ),
+
+              const SizedBox(height: 18),
+
+              dropdownField(),
+
+              const SizedBox(height: 30),
+
+              actionButton(
+                title: "Save Technician",
+                primary: true,
+                onTap: isLoading ? null : saveTechnician,
+              ),
+
+              const SizedBox(height: 14),
+
+              actionButton(
+                title: "Cancel",
+                primary: false,
+                onTap: () => Navigator.pop(context),
+              ),
+
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -98,91 +157,63 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
     );
   }
 
-  Widget card() {
+  Widget inputField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Container(
-      padding: AppUI.card,
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppUI.radiusLg),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Column(
-        children: [
-          inputField(nameController, "Full Name"),
-          const SizedBox(height: AppUI.gapSm),
-          inputField(emailController, "Email Address"),
-          const SizedBox(height: AppUI.gapSm),
-
-          /// ✅ FIXED PASSWORD FIELD
-          passwordField(),
-
-          const SizedBox(height: AppUI.gapSm),
-          inputField(phoneController, "Phone Number"),
-          const SizedBox(height: AppUI.gapSm),
-          dropdownField(),
-          const SizedBox(height: AppUI.gapLg),
-          actionButton(
-            title: "Save Technician",
-            primary: true,
-            onTap: isLoading ? null : saveTechnician,
+      child: Center(
+        child: TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          style: const TextStyle(color: Colors.black, fontSize: 18),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.black54, fontSize: 18),
           ),
-          const SizedBox(height: AppUI.gapSm),
-          actionButton(
-            title: "Cancel",
-            primary: false,
-            onTap: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget inputField(TextEditingController controller, String hint) {
-    return Container(
-      height: AppUI.inputHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(AppUI.radiusSm),
-      ),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(color: Colors.black),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-          border: InputBorder.none,
         ),
       ),
     );
   }
 
-  /// ✅ NEW PASSWORD FIELD
   Widget passwordField() {
     return Container(
-      height: AppUI.inputHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(AppUI.radiusSm),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: TextField(
-        controller: passwordController,
-        obscureText: obscurePassword,
-        style: const TextStyle(color: Colors.black),
-        decoration: InputDecoration(
-          hintText: "Password",
-          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-          border: InputBorder.none,
-          suffixIcon: IconButton(
-            icon: Icon(
-              obscurePassword ? Icons.visibility_off : Icons.visibility,
-              color: Colors.grey,
+      child: Center(
+        child: TextField(
+          controller: passwordController,
+          obscureText: obscurePassword,
+          style: const TextStyle(color: Colors.black, fontSize: 18),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: "Password",
+            hintStyle: const TextStyle(color: Colors.black54, fontSize: 18),
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Colors.black54,
+              ),
+              onPressed: () {
+                setState(() {
+                  obscurePassword = !obscurePassword;
+                });
+              },
             ),
-            onPressed: () {
-              setState(() {
-                obscurePassword = !obscurePassword;
-              });
-            },
           ),
         ),
       ),
@@ -198,22 +229,32 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
     ];
 
     return Container(
-      height: AppUI.inputHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(AppUI.radiusSm),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: DropdownButton<String>(
-        value: role,
-        underline: const SizedBox(),
-        dropdownColor: Colors.white,
-        isExpanded: true,
-        style: const TextStyle(color: Colors.black),
-        items: roles
-            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-            .toList(),
-        onChanged: (v) => setState(() => role = v!),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: role,
+          isExpanded: true,
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          style: const TextStyle(color: Colors.black, fontSize: 18),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.black54,
+          ),
+          items: roles.map((item) {
+            return DropdownMenuItem<String>(value: item, child: Text(item));
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              role = value!;
+            });
+          },
+        ),
       ),
     );
   }
@@ -226,17 +267,25 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: AppUI.buttonHeight,
+        height: 58,
         decoration: BoxDecoration(
-          color: primary ? AppColors.primary : const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(AppUI.radiusMd),
+          color: primary ? AppColors.primary : const Color(0xFFEDEDED),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Center(
           child: isLoading && primary
-              ? const CircularProgressIndicator(color: Colors.white)
+              ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: Colors.white,
+                  ),
+                )
               : Text(
                   title,
                   style: TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: primary ? Colors.white : Colors.black,
                   ),

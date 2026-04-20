@@ -5,7 +5,9 @@ import '../../data/db/database_helper.dart';
 import 'package:fsm_app/views/auth/login_screen.dart';
 
 class TechnicianDashboardScreen extends StatefulWidget {
-  const TechnicianDashboardScreen({super.key});
+  final String? technicianEmail;
+
+  const TechnicianDashboardScreen({super.key, this.technicianEmail});
 
   @override
   State<TechnicianDashboardScreen> createState() =>
@@ -27,18 +29,33 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
 
     if (!mounted) return;
 
-    setState(() {
-      jobs = allJobs;
+    List<Map<String, dynamic>> assignedJobs = allJobs;
 
-      if (jobs.isNotEmpty) {
-        technicianName = jobs.first["technician"] ?? "Technician";
+    if (widget.technicianEmail != null && widget.technicianEmail!.isNotEmpty) {
+      final techs = await DatabaseHelper.instance.getTechnicians();
+
+      final matched = techs
+          .where((e) => e["email"] == widget.technicianEmail)
+          .toList();
+
+      if (matched.isNotEmpty) {
+        technicianName = matched.first["name"] ?? "Technician";
+
+        assignedJobs = allJobs.where((job) {
+          return job["technician"] == technicianName;
+        }).toList();
       }
+    } else {
+      if (allJobs.isNotEmpty) {
+        technicianName = allJobs.first["technician"] ?? "Technician";
+      }
+    }
+
+    setState(() {
+      jobs = assignedJobs;
     });
   }
 
-  // ===========================
-  // LOGOUT (UNCHANGED UI ONLY)
-  // ===========================
   Future<void> logout() async {
     if (!mounted) return;
 
@@ -69,10 +86,65 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
 
     if (confirmLogout == true) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => LoginScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
       );
     }
+  }
+
+  Future<void> showStatusDialog(Map<String, dynamic> job) async {
+    String selectedStatus = job["status"] ?? "Pending";
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Update Job Status"),
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return DropdownButton<String>(
+                value: selectedStatus,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: "Pending", child: Text("Pending")),
+                  DropdownMenuItem(
+                    value: "In Progress",
+                    child: Text("In Progress"),
+                  ),
+                  DropdownMenuItem(
+                    value: "Completed",
+                    child: Text("Completed"),
+                  ),
+                ],
+                onChanged: (value) {
+                  setStateDialog(() {
+                    selectedStatus = value!;
+                  });
+                },
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await DatabaseHelper.instance.updateJobStatus(
+                  job["id"],
+                  selectedStatus,
+                );
+
+                Navigator.pop(context);
+                loadData(); // refresh technician screen
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Color statusColor(String status) {
@@ -103,14 +175,12 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-
       appBar: AppBar(
         title: const Text("Technician Dashboard"),
         actions: [
           IconButton(icon: const Icon(Icons.logout), onPressed: logout),
         ],
       ),
-
       body: SafeArea(
         child: Padding(
           padding: AppUI.screen,
@@ -223,7 +293,9 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
               priorityBadge(priority),
               const Spacer(),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  showStatusDialog(job);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(

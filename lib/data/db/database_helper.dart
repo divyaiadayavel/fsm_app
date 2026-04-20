@@ -292,6 +292,17 @@ class DatabaseHelper {
     }
   }
 
+  Future<int> updateJobStatus(int id, String status) async {
+    final db = await database;
+
+    return await db.update(
+      'jobs',
+      {'status': status},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   // ===============================
   // CLOSE DB
   // ===============================

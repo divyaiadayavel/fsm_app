@@ -26,10 +26,10 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   String? technician;
   String priority = "High";
-  String status = "In Progress";
 
   double? selectedLat;
   double? selectedLng;
+
   bool isLoading = false;
   int currentIndex = 1;
 
@@ -39,11 +39,22 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     loadTechnicians();
   }
 
+  @override
+  void dispose() {
+    titleController.dispose();
+    customerController.dispose();
+    locationController.dispose();
+    super.dispose();
+  }
+
   Future<void> loadTechnicians() async {
     final data = await DatabaseHelper.instance.getTechnicians();
 
+    if (!mounted) return;
+
     setState(() {
       technicians = data;
+
       if (technicians.isNotEmpty) {
         technician = technicians.first["name"];
       }
@@ -52,6 +63,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Future<void> updateCoordinatesFromAddress() async {
     final text = locationController.text.trim();
+
     if (text.isEmpty) return;
 
     setState(() => isLoading = true);
@@ -65,8 +77,11 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
           selectedLng = result.first.longitude;
         });
       }
+    } catch (_) {
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -79,7 +94,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       ),
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
       setState(() {
         locationController.text = result["address"];
         selectedLat = result["lat"];
@@ -98,7 +113,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       "location": locationController.text.trim(),
       "technician": technician,
       "priority": priority,
-      "status": status,
+      "status": "Pending",
       "lat": selectedLat,
       "lng": selectedLng,
     });
@@ -112,17 +127,17 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     }
   }
 
-  void onNavTap(int i) {
-    if (i == currentIndex) return;
+  void onNavTap(int index) {
+    if (index == currentIndex) return;
 
-    if (i == 0) {
+    if (index == 0) {
       Navigator.pop(context);
-    } else if (i == 2) {
+    } else if (index == 2) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const JobsScreen()),
       );
-    } else if (i == 3) {
+    } else if (index == 3) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const TechniciansScreen()),
@@ -133,7 +148,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundLight,
       body: SafeArea(
         child: Padding(
           padding: AppUI.screen,
@@ -141,78 +156,75 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.menu, color: Colors.black, size: 26),
+                  const Icon(
+                    Icons.menu,
+                    color: AppColors.textPrimary,
+                    size: 26,
+                  ),
                   const SizedBox(width: 10),
                   const Text(
                     "Create Job",
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.black),
+                    icon: const Icon(Icons.close, color: AppColors.textPrimary),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
 
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionTitle("JOB TITLE"),
-                    inputField(titleController, "Enter job title"),
+              sectionTitle("JOB TITLE"),
+              inputField(titleController, "Enter job title"),
 
-                    sectionTitle("CUSTOMER NAME"),
-                    inputField(customerController, "Enter customer name"),
+              const SizedBox(height: 16),
 
-                    sectionTitle("LOCATION"),
-                    locationField(),
+              sectionTitle("CUSTOMER NAME"),
+              inputField(customerController, "Enter customer name"),
 
-                    const SizedBox(height: 12),
-                    GestureDetector(onTap: pickLocation, child: mapCard()),
+              const SizedBox(height: 16),
 
-                    sectionTitle("ASSIGN TECHNICIAN"),
-                    technicianDropdown(),
+              sectionTitle("LOCATION"),
+              locationField(),
 
-                    sectionTitle("PRIORITY LEVEL"),
-                    Row(
-                      children: [
-                        Expanded(child: priorityButton("Low")),
-                        const SizedBox(width: 8),
-                        Expanded(child: priorityButton("Medium")),
-                        const SizedBox(width: 8),
-                        Expanded(child: priorityButton("High")),
-                      ],
-                    ),
+              const SizedBox(height: 14),
 
-                    const SizedBox(height: 22),
+              GestureDetector(onTap: pickLocation, child: mapCard()),
 
-                    actionButton(
-                      title: "Save Job",
-                      primary: true,
-                      onTap: saveJob,
-                    ),
+              const SizedBox(height: 16),
 
-                    const SizedBox(height: 12),
+              sectionTitle("ASSIGN TECHNICIAN"),
+              technicianDropdown(),
 
-                    actionButton(
-                      title: "Cancel",
-                      primary: false,
-                      onTap: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 16),
+
+              sectionTitle("PRIORITY LEVEL"),
+              Row(
+                children: [
+                  Expanded(child: priorityButton("Low")),
+                  const SizedBox(width: 10),
+                  Expanded(child: priorityButton("Medium")),
+                  const SizedBox(width: 10),
+                  Expanded(child: priorityButton("High")),
+                ],
+              ),
+
+              const SizedBox(height: 28),
+
+              actionButton(title: "Save Job", primary: true, onTap: saveJob),
+
+              const SizedBox(height: 14),
+
+              actionButton(
+                title: "Cancel",
+                primary: false,
+                onTap: () => Navigator.pop(context),
               ),
             ],
           ),
@@ -223,8 +235,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         currentIndex: currentIndex,
         onTap: onNavTap,
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.black54,
-        backgroundColor: Colors.white,
+        unselectedItemColor: AppColors.textSecondary,
+        backgroundColor: AppColors.white,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
@@ -244,14 +256,14 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Widget sectionTitle(String text) {
     return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: Colors.black87,
           letterSpacing: 1,
+          color: AppColors.textPrimary,
         ),
       ),
     );
@@ -259,19 +271,24 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Widget inputField(TextEditingController controller, String hint) {
     return Container(
-      height: 54,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(14),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(color: Colors.black),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: hint,
-          hintStyle: TextStyle(color: AppColors.grey),
+      child: Center(
+        child: TextField(
+          controller: controller,
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: hint,
+            hintStyle: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 18,
+            ),
+          ),
         ),
       ),
     );
@@ -279,29 +296,34 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Widget locationField() {
     return Container(
-      height: 54,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(14),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: TextField(
-        controller: locationController,
-        onSubmitted: (_) => updateCoordinatesFromAddress(),
-        style: const TextStyle(color: Colors.black),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: "Enter address",
-          hintStyle: TextStyle(color: AppColors.grey),
-          suffixIcon: IconButton(
-            onPressed: updateCoordinatesFromAddress,
-            icon: isLoading
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(Icons.search, color: AppColors.primary),
+      child: Center(
+        child: TextField(
+          controller: locationController,
+          onSubmitted: (_) => updateCoordinatesFromAddress(),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: "Enter address",
+            hintStyle: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 18,
+            ),
+            suffixIcon: IconButton(
+              onPressed: updateCoordinatesFromAddress,
+              icon: isLoading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.search, color: AppColors.primary),
+            ),
           ),
         ),
       ),
@@ -313,8 +335,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       height: 110,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(14),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
         child: Text(
@@ -323,7 +345,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
               : "Lat: ${selectedLat!.toStringAsFixed(4)}\nLng: ${selectedLng!.toStringAsFixed(4)}",
           textAlign: TextAlign.center,
           style: const TextStyle(
-            color: Colors.black87,
+            color: AppColors.textPrimary,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -333,24 +356,33 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   Widget technicianDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(14),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: DropdownButton<String>(
-        value: technician,
-        underline: const SizedBox(),
-        isExpanded: true,
-        dropdownColor: Colors.white,
-        style: const TextStyle(color: Colors.black),
-        items: technicians.map((e) {
-          return DropdownMenuItem<String>(
-            value: e["name"],
-            child: Text(e["name"]),
-          );
-        }).toList(),
-        onChanged: (v) => setState(() => technician = v),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: technician,
+          isExpanded: true,
+          dropdownColor: AppColors.white,
+          borderRadius: BorderRadius.circular(18),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.textSecondary,
+          ),
+          items: technicians.map((e) {
+            return DropdownMenuItem<String>(
+              value: e["name"],
+              child: Text(e["name"]),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() => technician = value);
+          },
+        ),
       ),
     );
   }
@@ -361,17 +393,18 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     return GestureDetector(
       onTap: () => setState(() => priority = value),
       child: Container(
-        height: 48,
+        height: 56,
         decoration: BoxDecoration(
-          color: active ? AppColors.primary : const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(12),
+          color: active ? AppColors.primary : const Color(0xFFEDEDED),
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
           child: Text(
             value,
             style: TextStyle(
-              color: active ? Colors.white : Colors.black87,
+              color: active ? AppColors.white : AppColors.textPrimary,
               fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
           ),
         ),
@@ -387,18 +420,18 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 54,
+        height: 58,
         decoration: BoxDecoration(
-          color: primary ? AppColors.primary : const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(14),
+          color: primary ? AppColors.primary : const Color(0xFFEDEDED),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Center(
           child: Text(
             title,
             style: TextStyle(
-              color: primary ? Colors.white : Colors.black,
+              color: primary ? AppColors.white : AppColors.textPrimary,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 18,
             ),
           ),
         ),

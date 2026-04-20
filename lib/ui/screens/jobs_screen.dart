@@ -16,7 +16,6 @@ class _JobsScreenState extends State<JobsScreen> {
   List<Map<String, dynamic>> filteredJobs = [];
 
   final searchController = TextEditingController();
-  String selectedStatus = "All";
 
   @override
   void initState() {
@@ -40,15 +39,9 @@ class _JobsScreenState extends State<JobsScreen> {
     final query = searchController.text.toLowerCase().trim();
 
     filteredJobs = allJobs.where((job) {
-      final matchesSearch =
-          job["title"].toLowerCase().contains(query) ||
+      return job["title"].toLowerCase().contains(query) ||
           job["customer"].toLowerCase().contains(query) ||
           job["location"].toLowerCase().contains(query);
-
-      final matchesStatus =
-          selectedStatus == "All" || job["status"] == selectedStatus;
-
-      return matchesSearch && matchesStatus;
     }).toList();
 
     setState(() {});
@@ -57,11 +50,11 @@ class _JobsScreenState extends State<JobsScreen> {
   Color getSideColor(String priority) {
     switch (priority) {
       case "High":
-        return Colors.redAccent;
+        return AppColors.error;
       case "Medium":
-        return Colors.blueAccent;
+        return AppColors.blue;
       default:
-        return Colors.grey;
+        return AppColors.grey;
     }
   }
 
@@ -76,19 +69,19 @@ class _JobsScreenState extends State<JobsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: const [
+                children: [
                   Icon(
                     Icons.work_outline,
-                    color: Colors.black,
+                    color: AppColors.textPrimary,
                     size: AppUI.subTitle,
                   ),
-                  SizedBox(width: AppUI.gapSm),
+                  const SizedBox(width: AppUI.gapSm),
                   Text(
                     "Jobs",
                     style: TextStyle(
                       fontSize: AppUI.title,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -100,39 +93,19 @@ class _JobsScreenState extends State<JobsScreen> {
                 height: AppUI.inputHeight,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.card,
                   borderRadius: BorderRadius.circular(AppUI.radiusMd),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: TextField(
                   controller: searchController,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: AppUI.body,
-                  ),
-                  decoration: const InputDecoration(
-                    icon: Icon(Icons.search, color: Colors.black54),
+                  style: TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    icon: Icon(Icons.search, color: AppColors.textSecondary),
                     hintText: "Search jobs...",
-                    hintStyle: TextStyle(
-                      color: Colors.black45,
-                      fontSize: AppUI.body,
-                    ),
+                    hintStyle: TextStyle(color: AppColors.textSecondary),
                     border: InputBorder.none,
                   ),
-                ),
-              ),
-
-              const SizedBox(height: AppUI.gapSm),
-
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    statusChip("All"),
-                    statusChip("Pending"),
-                    statusChip("In Progress"),
-                    statusChip("Completed"),
-                    statusChip("Cancelled"),
-                  ],
                 ),
               ),
 
@@ -140,11 +113,11 @@ class _JobsScreenState extends State<JobsScreen> {
 
               Expanded(
                 child: filteredJobs.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           "No jobs found",
                           style: TextStyle(
-                            color: Colors.black54,
+                            color: AppColors.textSecondary,
                             fontSize: AppUI.body,
                           ),
                         ),
@@ -167,35 +140,6 @@ class _JobsScreenState extends State<JobsScreen> {
                       ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget statusChip(String title) {
-    final active = selectedStatus == title;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: AppUI.gapXs),
-      child: GestureDetector(
-        onTap: () {
-          selectedStatus = title;
-          applyFilters();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
-            color: active ? AppColors.primary : Colors.white,
-            borderRadius: BorderRadius.circular(AppUI.radiusLg),
-          ),
-          child: Text(
-            title,
-            style: TextStyle(
-              color: active ? Colors.white : Colors.black,
-              fontSize: AppUI.caption,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ),
       ),
