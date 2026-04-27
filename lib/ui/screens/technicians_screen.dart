@@ -23,9 +23,12 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
   Future<void> loadTechnicians() async {
     final data = await DatabaseHelper.instance.getTechnicians();
-    if (mounted) {
-      setState(() => technicians = data);
-    }
+
+    if (!mounted) return;
+
+    setState(() {
+      technicians = data;
+    });
   }
 
   Future<void> deleteTechnician(int id) async {
@@ -44,13 +47,13 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
         title: const Text(
           "Delete Technician?",
           style: TextStyle(
-            color: Colors.black,
             fontSize: AppUI.subTitle,
             fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
         ),
         content: const Text(
-          "Are you sure to delete this technician?",
+          "Are you sure you want to delete this technician?",
           style: TextStyle(color: Colors.black87),
         ),
         actions: [
@@ -77,10 +80,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
         builder: (_) => AddTechnicianScreen(
           onSave: (data) async {
             try {
-              final db = DatabaseHelper.instance;
-
-              // ✅ Save to technicians table
-              await db.insertTechnician({
+              await DatabaseHelper.instance.insertTechnician({
                 "name": data["name"],
                 "email": data["email"],
                 "phone": data["phone"],
@@ -89,8 +89,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
                 "online": data["online"],
               });
 
-              // ✅ Save to users table for login
-              await db.insertUser({
+              await DatabaseHelper.instance.insertUser({
                 "name": data["name"],
                 "email": data["email"],
                 "password": data["password"],
@@ -99,8 +98,6 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
               await loadTechnicians();
             } catch (e) {
-              debugPrint("Save Technician Error: $e");
-
               if (mounted) {
                 ScaffoldMessenger.of(
                   context,
@@ -119,6 +116,8 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scale = MediaQuery.of(context).size.width / 400;
+
     final activeCount = technicians
         .where((e) => (e["online"] ?? 0) == 1)
         .length;
@@ -127,72 +126,61 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+
       body: SafeArea(
         child: Padding(
-          padding: AppUI.screen,
+          padding: EdgeInsets.all(14 * scale),
           child: ListView(
             children: [
               Row(
                 children: [
-                  const Icon(Icons.menu, color: Colors.black, size: 28),
-                  const SizedBox(width: AppUI.gapSm),
-                  const Text(
-                    "Command Center",
+                  Icon(Icons.groups, color: Colors.black, size: 24 * scale),
+                  SizedBox(width: 8 * scale),
+                  Text(
+                    "Technicians",
                     style: TextStyle(
-                      fontSize: AppUI.title,
+                      fontSize: 20 * scale,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                   ),
                   const Spacer(),
-                  Container(
-                    height: AppUI.avatarSize,
-                    width: AppUI.avatarSize,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppUI.radiusSm),
+                  IconButton(
+                    onPressed: loadTechnicians,
+                    icon: Icon(
+                      Icons.refresh,
+                      color: Colors.black,
+                      size: 22 * scale,
                     ),
-                    child: const Icon(Icons.person, color: Colors.black),
                   ),
                 ],
               ),
 
-              const SizedBox(height: AppUI.gapXl),
+              SizedBox(height: 18 * scale),
 
-              const Text(
-                "Technicians",
+              Text(
+                "Manage field leads and logistics teams",
                 style: TextStyle(
-                  fontSize: AppUI.heading,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: const Color(0xFF6B7280),
+                  fontSize: 13 * scale,
                 ),
               ),
 
-              const SizedBox(height: AppUI.gapXs),
-
-              const Text(
-                "Managing field leads and logistics teams",
-                style: TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: AppUI.body,
-                ),
-              ),
-
-              const SizedBox(height: AppUI.gapLg),
+              SizedBox(height: 18 * scale),
 
               GestureDetector(
                 onTap: openAddScreen,
                 child: Container(
-                  height: 72,
+                  height: 52 * scale,
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(AppUI.radiusLg),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       "+ Add Technician",
                       style: TextStyle(
-                        fontSize: AppUI.subTitle,
+                        fontSize: 16 * scale,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -201,25 +189,33 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppUI.gapLg),
+              SizedBox(height: 16 * scale),
 
               Row(
                 children: [
                   Expanded(
-                    child: statCard("ACTIVE NOW", activeCount.toString()),
+                    child: statCard(
+                      "ACTIVE NOW",
+                      activeCount.toString(),
+                      scale,
+                    ),
                   ),
-                  const SizedBox(width: AppUI.gapSm),
+                  SizedBox(width: 10 * scale),
                   Expanded(
-                    child: statCard("TOTAL LEADS", totalCount.toString()),
+                    child: statCard(
+                      "TOTAL LEADS",
+                      totalCount.toString(),
+                      scale,
+                    ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: AppUI.gapLg),
+              SizedBox(height: 16 * scale),
 
               if (technicians.isEmpty)
                 Container(
-                  padding: const EdgeInsets.all(30),
+                  padding: EdgeInsets.all(20 * scale),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(AppUI.radiusMd),
@@ -251,10 +247,10 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
     );
   }
 
-  Widget statCard(String title, String value) {
+  Widget statCard(String title, String value, double s) {
     return Container(
-      height: 130,
-      padding: AppUI.card,
+      height: 110 * s,
+      padding: EdgeInsets.all(12 * s),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppUI.radiusLg),
@@ -267,7 +263,7 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
             style: const TextStyle(
               color: Color(0xFF6B7280),
               fontSize: AppUI.caption,
-              letterSpacing: 1.4,
+              letterSpacing: 1.2,
             ),
           ),
           const Spacer(),

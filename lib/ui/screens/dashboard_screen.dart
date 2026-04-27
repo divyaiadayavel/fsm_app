@@ -1,11 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_ui.dart';
-import '../../data/db/database_helper.dart';
-import '../widgets/stat_card.dart';
-import '../widgets/recent_job_tile.dart';
+import '../../data/services/api_service.dart';
+import 'update_job_screen.dart';
 import 'package:fsm_app/views/auth/login_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -24,26 +27,119 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int completed = 0;
   int cancelled = 0;
 
+  String userName = "Admin";
+  String imagePath = "";
+
   @override
   void initState() {
     super.initState();
     loadJobs();
+    loadProfile();
   }
 
+  // ============================
+  // 🔥 LOAD JOBS FROM API
+  // ============================
   Future<void> loadJobs() async {
-    final data = await DatabaseHelper.instance.getJobs();
+    final response = await ApiService.getJobs();
 
     if (!mounted) return;
 
-    setState(() {
-      jobs = data;
+    if (response['status'] == true) {
+      final data = List<Map<String, dynamic>>.from(response['data']);
 
-      total = jobs.length;
-      pending = jobs.where((e) => e["status"] == "Pending").length;
-      progress = jobs.where((e) => e["status"] == "In Progress").length;
-      completed = jobs.where((e) => e["status"] == "Completed").length;
-      cancelled = jobs.where((e) => e["status"] == "Cancelled").length;
+      setState(() {
+        jobs = data;
+
+        total = jobs.length;
+        pending = jobs.where((e) => e["status"] == "Pending").length;
+        progress =
+            jobs.where((e) => e["status"] == "In Progress").length;
+        completed =
+            jobs.where((e) => e["status"] == "Completed").length;
+        cancelled =
+            jobs.where((e) => e["status"] == "Cancelled").length;
+      });
+    } else {
+      setState(() {
+        jobs = [];
+      });
+    }
+  }
+
+  // ============================
+  // 🗑 DELETE JOB
+  // ============================
+  Future<void> deleteJob(int id) async {
+    final response = await ApiService.deleteJob(id);
+
+    if (response['status'] == true) {
+      loadJobs();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response['message'])),
+      );
+    }
+  }
+
+  Future<void> loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      userName = prefs.getString("admin_name") ?? "Admin";
+      imagePath = prefs.getString("admin_image") ?? "";
     });
+  }
+
+  Future<void> saveProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString("admin_name", userName);
+    await prefs.setString("admin_image", imagePath);
+  }
+
+  Future<void> pickImage() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+
+    if (picked != null) {
+      setState(() {
+        imagePath = picked.path;
+      });
+
+      saveProfile();
+    }
+  }
+
+  void editName() {
+    final controller = TextEditingController(text: userName);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Edit Name"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: "Enter name"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                userName = controller.text.trim();
+              });
+
+              saveProfile();
+              Navigator.pop(context);
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
   }
 
   List<double> getChartValues() {
@@ -56,45 +152,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<void> logout() async {
-    if (!mounted) return;
-
-    final bool? confirmLogout = await showDialog<bool>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: AppColors.card,
-          title: Text("Logout", style: TextStyle(color: AppColors.textPrimary)),
-          content: Text(
-            "Are you sure you want to logout?",
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(
-                "Cancel",
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Yes", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
     );
-
-    if (confirmLogout == true) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
   }
 
   @override
@@ -105,12 +167,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.card,
-        elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
-        title: Text(
-          "Admin Dashboard",
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
+        title: Text("Admin Dashboard",
+            style: TextStyle(color: AppColors.textPrimary)),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: AppColors.textPrimary),
@@ -122,222 +180,124 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
+
       body: RefreshIndicator(
-        color: AppColors.primary,
         onRefresh: loadJobs,
-        child: SafeArea(
-          child: Padding(
-            padding: AppUI.screen,
-            child: ListView(
-              children: [
-                Row(
+        child: Padding(
+          padding: AppUI.screen,
+          child: ListView(
+            children: [
+              // PROFILE
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
                   children: [
-                    Icon(
-                      Icons.menu,
-                      color: AppColors.textPrimary,
-                      size: AppUI.title,
-                    ),
-                    const SizedBox(width: AppUI.gapSm),
-                    Text(
-                      "Command Center",
-                      style: TextStyle(
-                        fontSize: AppUI.title,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                    GestureDetector(
+                      onTap: pickImage,
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundImage: imagePath.isNotEmpty
+                            ? FileImage(File(imagePath))
+                            : null,
+                        child: imagePath.isEmpty
+                            ? const Icon(Icons.person)
+                            : null,
                       ),
                     ),
-                    const Spacer(),
-                    Container(
-                      height: AppUI.avatarSize,
-                      width: AppUI.avatarSize,
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(AppUI.radiusSm),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Welcome"),
+                          Text(userName,
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold)),
+                        ],
                       ),
-                      child: Icon(Icons.person, color: AppColors.textPrimary),
                     ),
+                    IconButton(onPressed: editName, icon: Icon(Icons.edit)),
                   ],
                 ),
+              ),
 
-                const SizedBox(height: AppUI.gapLg),
+              const SizedBox(height: 16),
 
-                Text(
-                  "OPERATIONAL OVERVIEW",
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    letterSpacing: 2,
-                    fontSize: AppUI.caption,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              // STATS
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                children: [
+                  statTile("TOTAL", total, Colors.blue),
+                  statTile("PENDING", pending, Colors.orange),
+                  statTile("PROGRESS", progress, Colors.blueAccent),
+                  statTile("COMPLETED", completed, Colors.green),
+                ],
+              ),
 
-                const SizedBox(height: AppUI.gapXs),
+              const SizedBox(height: 16),
 
-                Text(
-                  "Systems Active",
-                  style: TextStyle(
-                    fontSize: AppUI.heading,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+              // RECENT JOBS
+              const Text("Recent Jobs",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
 
-                const SizedBox(height: AppUI.gapLg),
+              const SizedBox(height: 10),
 
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  childAspectRatio: 1.18,
-                  crossAxisSpacing: AppUI.gapSm,
-                  mainAxisSpacing: AppUI.gapSm,
-                  children: [
-                    StatCard(
-                      icon: Icons.bar_chart_rounded,
-                      label: "TOTAL JOBS",
-                      count: total,
-                      color: AppColors.primary,
-                    ),
-                    StatCard(
-                      icon: Icons.pending_actions_rounded,
-                      label: "PENDING",
-                      count: pending,
-                      color: AppColors.orange,
-                    ),
-                    StatCard(
-                      icon: Icons.pie_chart_outline_rounded,
-                      label: "IN PROGRESS",
-                      count: progress,
-                      color: AppColors.blue,
-                    ),
-                    StatCard(
-                      icon: Icons.check_circle_outline,
-                      label: "COMPLETED",
-                      count: completed,
-                      color: AppColors.green,
-                    ),
-                  ],
-                ),
+              if (jobs.isEmpty)
+                const Center(child: Text("No jobs found")),
 
-                const SizedBox(height: AppUI.gapLg),
-
-                Container(
-                  height: AppUI.chartHeight,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(AppUI.radiusLg),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Job Status Distribution",
-                        style: TextStyle(
-                          fontSize: AppUI.subTitle,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: AppUI.gapMd),
-
-                      Expanded(
-                        child: BarChart(
-                          BarChartData(
-                            alignment: BarChartAlignment.spaceAround,
-                            maxY: values.every((e) => e == 0)
-                                ? 5
-                                : values.reduce((a, b) => a > b ? a : b) + 2,
-                            borderData: FlBorderData(show: false),
-                            gridData: FlGridData(
-                              show: true,
-                              drawVerticalLine: false,
-                              getDrawingHorizontalLine: (value) {
-                                return FlLine(
-                                  color: AppColors.border,
-                                  strokeWidth: 1,
-                                );
-                              },
-                            ),
-                            titlesData: FlTitlesData(
-                              topTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
+              ...jobs.take(5).map((job) {
+                return Card(
+                  child: ListTile(
+                    title: Text(job["title"]),
+                    subtitle: Text(job["location"] ?? ""),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => UpdateJobScreen(
+                                  job: job,
+                                  onUpdated: loadJobs,
+                                ),
                               ),
-                              rightTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                            ),
-                            barGroups: [
-                              barItem(0, values[0], AppColors.orange),
-                              barItem(1, values[1], AppColors.blue),
-                              barItem(2, values[2], AppColors.green),
-                              barItem(3, values[3], AppColors.error),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: AppUI.gapLg),
-
-                Text(
-                  "Recent Jobs",
-                  style: TextStyle(
-                    fontSize: AppUI.title,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-
-                const SizedBox(height: AppUI.gapSm),
-
-                if (jobs.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(AppUI.radiusMd),
-                    ),
-                    child: Center(
-                      child: Text(
-                        "No jobs created yet",
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => deleteJob(job["id"]),
+                        ),
+                      ],
                     ),
                   ),
-
-                ...jobs
-                    .take(5)
-                    .map(
-                      (job) => RecentJobTile(
-                        title: job["title"],
-                        location: job["location"],
-                        status: job["status"],
-                        time: job["customer"],
-                        icon: Icons.build_circle_outlined,
-                      ),
-                    ),
-              ],
-            ),
+                );
+              }),
+            ],
           ),
         ),
       ),
     );
   }
 
-  BarChartGroupData barItem(int x, double y, Color color) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          width: 22,
-          color: color,
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ],
+  Widget statTile(String label, int count, Color color) {
+    return Card(
+      child: ListTile(
+        title: Text(label),
+        trailing: Text("$count",
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+      ),
     );
   }
 }

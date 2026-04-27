@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_ui.dart';
-import '../../data/db/database_helper.dart';
-import 'jobs_screen.dart';
+import '../../data/services/api_service.dart';
 import 'map_picker_screen.dart';
-import 'technicians_screen.dart';
 
 class CreateJobScreen extends StatefulWidget {
   final VoidCallback onSaved;
@@ -24,14 +20,18 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   List<Map<String, dynamic>> technicians = [];
 
-  String? technician;
+  int? technicianId; // ✅ ID instead of name
   String priority = "High";
 
   double? selectedLat;
   double? selectedLng;
 
   bool isLoading = false;
-  int currentIndex = 1;
+
+  final Color greyBoxColor = const Color(0xFFF2F2F2);
+  final Color primaryBlue = const Color(0xFF4C61EE);
+  final Color blackText = Colors.black;
+  final Color secondaryGrey = Colors.black54;
 
   @override
   void initState() {
@@ -47,20 +47,29 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     super.dispose();
   }
 
+  // ============================
+  // 📋 LOAD TECHNICIANS (API)
+  // ============================
   Future<void> loadTechnicians() async {
-    final data = await DatabaseHelper.instance.getTechnicians();
+    final response = await ApiService.getTechnicians();
 
     if (!mounted) return;
 
-    setState(() {
-      technicians = data;
+    if (response['status'] == true) {
+      setState(() {
+        technicians = List<Map<String, dynamic>>.from(response['data']);
 
-      if (technicians.isNotEmpty) {
-        technician = technicians.first["name"];
-      }
-    });
+        if (technicians.isNotEmpty) {
+          technicianId =
+              int.parse(technicians.first["id"].toString());
+        }
+      });
+    }
   }
 
+  // ============================
+  // 📍 GET LAT LNG FROM ADDRESS
+  // ============================
   Future<void> updateCoordinatesFromAddress() async {
     final text = locationController.text.trim();
 
@@ -69,7 +78,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     setState(() => isLoading = true);
 
     try {
-      final result = await locationFromAddress("$text, Tamil Nadu, India");
+      final result =
+          await locationFromAddress("$text, Tamil Nadu, India");
 
       if (result.isNotEmpty) {
         setState(() {
@@ -77,20 +87,24 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
           selectedLng = result.first.longitude;
         });
       }
-    } catch (_) {
-    } finally {
+    } catch (_) {} finally {
       if (mounted) {
         setState(() => isLoading = false);
       }
     }
   }
 
+  // ============================
+  // 🗺 MAP PICKER
+  // ============================
   Future<void> pickLocation() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            MapPickerScreen(initialLat: selectedLat, initialLng: selectedLng),
+        builder: (_) => MapPickerScreen(
+          initialLat: selectedLat,
+          initialLng: selectedLng,
+        ),
       ),
     );
 
@@ -103,153 +117,127 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     }
   }
 
+  // ============================
+  // 💾 SAVE JOB (API)
+  // ============================
   Future<void> saveJob() async {
     if (titleController.text.trim().isEmpty) return;
-    if (technician == null) return;
+    if (technicianId == null) return;
 
-    await DatabaseHelper.instance.insertJob({
+    final response = await ApiService.createJob({
       "title": titleController.text.trim(),
       "customer": customerController.text.trim(),
       "location": locationController.text.trim(),
-      "technician": technician,
+      "technician_id": technicianId,
       "priority": priority,
       "status": "Pending",
       "lat": selectedLat,
       "lng": selectedLng,
     });
 
-    await DatabaseHelper.instance.increaseTechnicianJobs(technician!);
+    if (response['status'] == true) {
+      widget.onSaved();
 
-    widget.onSaved();
-
-    if (mounted) {
-      Navigator.pop(context);
-    }
-  }
-
-  void onNavTap(int index) {
-    if (index == currentIndex) return;
-
-    if (index == 0) {
-      Navigator.pop(context);
-    } else if (index == 2) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const JobsScreen()),
-      );
-    } else if (index == 3) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const TechniciansScreen()),
+      if (mounted) Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response['message'] ?? "Failed")),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final scale = MediaQuery.of(context).size.width / 400;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
-          padding: AppUI.screen,
+          padding: EdgeInsets.symmetric(horizontal: 24 * scale),
           child: ListView(
             children: [
+              SizedBox(height: 20 * scale),
+
               Row(
                 children: [
-                  const Icon(
-                    Icons.menu,
-                    color: AppColors.textPrimary,
-                    size: 26,
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     "Create Job",
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 24 * scale,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: blackText,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: AppColors.textPrimary),
+                    icon: Icon(Icons.close, size: 24 * scale),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 22),
+              SizedBox(height: 20 * scale),
 
               sectionTitle("JOB TITLE"),
-              inputField(titleController, "Enter job title"),
+              buildTextField(titleController, "Enter job title", scale),
 
-              const SizedBox(height: 16),
+              SizedBox(height: 16 * scale),
 
               sectionTitle("CUSTOMER NAME"),
-              inputField(customerController, "Enter customer name"),
+              buildTextField(customerController, "Enter customer name", scale),
 
-              const SizedBox(height: 16),
+              SizedBox(height: 16 * scale),
 
               sectionTitle("LOCATION"),
-              locationField(),
+              buildLocationField(scale),
 
-              const SizedBox(height: 14),
+              SizedBox(height: 12 * scale),
 
-              GestureDetector(onTap: pickLocation, child: mapCard()),
+              GestureDetector(onTap: pickLocation, child: mapCard(scale)),
 
-              const SizedBox(height: 16),
+              SizedBox(height: 16 * scale),
 
               sectionTitle("ASSIGN TECHNICIAN"),
-              technicianDropdown(),
+              buildTechnicianDropdown(scale),
 
-              const SizedBox(height: 16),
+              SizedBox(height: 16 * scale),
 
               sectionTitle("PRIORITY LEVEL"),
               Row(
                 children: [
-                  Expanded(child: priorityButton("Low")),
-                  const SizedBox(width: 10),
-                  Expanded(child: priorityButton("Medium")),
-                  const SizedBox(width: 10),
-                  Expanded(child: priorityButton("High")),
+                  Expanded(child: priorityButton("Low", scale)),
+                  SizedBox(width: 8 * scale),
+                  Expanded(child: priorityButton("Medium", scale)),
+                  SizedBox(width: 8 * scale),
+                  Expanded(child: priorityButton("High", scale)),
                 ],
               ),
 
-              const SizedBox(height: 28),
+              SizedBox(height: 30 * scale),
 
-              actionButton(title: "Save Job", primary: true, onTap: saveJob),
-
-              const SizedBox(height: 14),
-
-              actionButton(
-                title: "Cancel",
-                primary: false,
-                onTap: () => Navigator.pop(context),
+              buildActionButton(
+                "Save Job",
+                primaryBlue,
+                Colors.white,
+                scale,
+                saveJob,
               ),
+
+              SizedBox(height: 12 * scale),
+
+              buildActionButton(
+                "Cancel",
+                greyBoxColor,
+                blackText,
+                scale,
+                () => Navigator.pop(context),
+              ),
+
+              SizedBox(height: 20 * scale),
             ],
           ),
         ),
-      ),
-
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: onNavTap,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        backgroundColor: AppColors.white,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: "Dashboard",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle),
-            label: "Create",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.work), label: "Jobs"),
-          BottomNavigationBarItem(icon: Icon(Icons.groups), label: "Techs"),
-        ],
       ),
     );
   }
@@ -259,152 +247,115 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1,
-          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w800,
+          color: secondaryGrey,
         ),
       ),
     );
   }
 
-  Widget inputField(TextEditingController controller, String hint) {
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: TextField(
-          controller: controller,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            hintText: hint,
-            hintStyle: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 18,
-            ),
-          ),
+  Widget buildTextField(
+      TextEditingController controller, String hint, double s) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: greyBoxColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
     );
   }
 
-  Widget locationField() {
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: TextField(
-          controller: locationController,
-          onSubmitted: (_) => updateCoordinatesFromAddress(),
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            hintText: "Enter address",
-            hintStyle: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 18,
-            ),
-            suffixIcon: IconButton(
-              onPressed: updateCoordinatesFromAddress,
-              icon: isLoading
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.search, color: AppColors.primary),
-            ),
-          ),
+  Widget buildLocationField(double s) {
+    return TextField(
+      controller: locationController,
+      onSubmitted: (_) => updateCoordinatesFromAddress(),
+      decoration: InputDecoration(
+        hintText: "Enter address",
+        filled: true,
+        fillColor: greyBoxColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        suffixIcon: IconButton(
+          onPressed: updateCoordinatesFromAddress,
+          icon: isLoading
+              ? const CircularProgressIndicator()
+              : Icon(Icons.search, color: primaryBlue),
         ),
       ),
     );
   }
 
-  Widget mapCard() {
+  Widget mapCard(double s) {
     return Container(
-      height: 110,
-      width: double.infinity,
+      height: 90,
       decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(20),
+        color: greyBoxColor,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
         child: Text(
           selectedLat == null
-              ? "Search address to show location"
+              ? "Tap to pick location"
               : "Lat: ${selectedLat!.toStringAsFixed(4)}\nLng: ${selectedLng!.toStringAsFixed(4)}",
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
         ),
       ),
     );
   }
 
-  Widget technicianDropdown() {
+  Widget buildTechnicianDropdown(double s) {
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(20),
+        color: greyBoxColor,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: technician,
+        child: DropdownButton<int>(
+          value: technicianId,
           isExpanded: true,
-          dropdownColor: AppColors.white,
-          borderRadius: BorderRadius.circular(18),
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.textSecondary,
-          ),
           items: technicians.map((e) {
-            return DropdownMenuItem<String>(
-              value: e["name"],
+            return DropdownMenuItem<int>(
+              value: int.parse(e["id"].toString()),
               child: Text(e["name"]),
             );
           }).toList(),
           onChanged: (value) {
-            setState(() => technician = value);
+            setState(() {
+              technicianId = value;
+            });
           },
         ),
       ),
     );
   }
 
-  Widget priorityButton(String value) {
+  Widget priorityButton(String value, double s) {
     final active = priority == value;
 
     return GestureDetector(
-      onTap: () => setState(() => priority = value),
+      onTap: () {
+        setState(() => priority = value);
+      },
       child: Container(
-        height: 56,
+        height: 44,
         decoration: BoxDecoration(
-          color: active ? AppColors.primary : const Color(0xFFEDEDED),
-          borderRadius: BorderRadius.circular(18),
+          color: active ? primaryBlue : greyBoxColor,
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
           child: Text(
             value,
             style: TextStyle(
-              color: active ? AppColors.white : AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+              color: active ? Colors.white : blackText,
             ),
           ),
         ),
@@ -412,29 +363,16 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  Widget actionButton({
-    required String title,
-    required bool primary,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 58,
-        decoration: BoxDecoration(
-          color: primary ? AppColors.primary : const Color(0xFFEDEDED),
-          borderRadius: BorderRadius.circular(20),
+  Widget buildActionButton(
+      String label, Color bg, Color text, double s, VoidCallback tap) {
+    return SizedBox(
+      height: 50,
+      child: ElevatedButton(
+        onPressed: tap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bg,
         ),
-        child: Center(
-          child: Text(
-            title,
-            style: TextStyle(
-              color: primary ? AppColors.white : AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-        ),
+        child: Text(label),
       ),
     );
   }

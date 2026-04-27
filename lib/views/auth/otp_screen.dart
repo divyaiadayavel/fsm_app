@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/validators.dart';
+import '../../riverpod/auth_controller.dart';
 import 'reset_password_screen.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
@@ -18,8 +19,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   final formKey = GlobalKey<FormState>();
   final otpController = TextEditingController();
 
-  bool isLoading = false;
-
   @override
   void dispose() {
     otpController.dispose();
@@ -33,14 +32,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   Future<void> verifyOtp() async {
     if (!formKey.currentState!.validate()) return;
 
-    setState(() => isLoading = true);
+    final otp = otpController.text.trim();
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    final auth = ref.read(authControllerProvider.notifier);
+    final success = auth.verifyOtp(widget.email, otp);
 
-    final enteredOtp = otpController.text.trim();
-
-    // Demo OTP check
-    if (enteredOtp == "123456") {
+    if (success) {
       if (!mounted) return;
 
       Navigator.pushReplacement(
@@ -52,41 +49,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     } else {
       showMessage("Invalid OTP");
     }
-
-    if (mounted) {
-      setState(() => isLoading = false);
-    }
-  }
-
-  InputDecoration fieldDecoration() {
-    return InputDecoration(
-      hintText: "Enter 6 digit OTP",
-      hintStyle: const TextStyle(color: Colors.grey),
-      prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
-      filled: true,
-      fillColor: AppColors.card,
-      contentPadding: const EdgeInsets.symmetric(vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(authControllerProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -144,9 +112,19 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   controller: otpController,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
-                  style: const TextStyle(color: Colors.black),
                   validator: (value) => Validators.validateOtp(value ?? ''),
-                  decoration: fieldDecoration(),
+                  decoration: InputDecoration(
+                    hintText: "Enter 6 digit OTP",
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.card,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                 ),
 
                 const SizedBox(height: 20),
@@ -155,27 +133,19 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   width: double.infinity,
                   height: 54,
                   child: ElevatedButton(
-                    onPressed: isLoading ? null : verifyOtp,
+                    onPressed: state.isLoading ? null : verifyOtp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                    child: state.isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
                             "Verify OTP",
                             style: TextStyle(
-                              fontSize: 16,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -186,8 +156,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
                 Center(
                   child: TextButton(
-                    onPressed: () {
-                      showMessage("OTP resent successfully");
+                    onPressed: () async {
+                      final ok = await ref
+                          .read(authControllerProvider.notifier)
+                          .sendOtp(widget.email);
+
+                      showMessage(
+                        ok ? "OTP resent successfully" : "Failed to resend OTP",
+                      );
                     },
                     child: const Text(
                       "Resend Code",

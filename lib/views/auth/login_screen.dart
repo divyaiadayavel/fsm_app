@@ -22,10 +22,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  final emailFocus = FocusNode();
+  final passwordFocus = FocusNode();
+
   bool hidePassword = true;
   bool rememberMe = false;
 
+  bool validateEmailNow = false;
+  bool validatePasswordNow = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    emailFocus.addListener(() {
+      if (!emailFocus.hasFocus) {
+        setState(() {
+          validateEmailNow = true;
+        });
+        formKey.currentState?.validate();
+      }
+    });
+
+    passwordFocus.addListener(() {
+      if (!passwordFocus.hasFocus) {
+        setState(() {
+          validatePasswordNow = true;
+        });
+        formKey.currentState?.validate();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    emailFocus.dispose();
+    passwordFocus.dispose();
+    super.dispose();
+  }
+
   Future<void> login() async {
+    setState(() {
+      validateEmailNow = true;
+      validatePasswordNow = true;
+    });
+
     if (!formKey.currentState!.validate()) return;
 
     final auth = ref.read(authControllerProvider.notifier);
@@ -35,13 +78,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       passwordController.text.trim(),
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       final user = ref.read(authControllerProvider).user;
 
       if (user != null && user["role"] == "admin") {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainNavigation()),
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
         );
       } else {
         Navigator.pushReplacement(
@@ -109,8 +154,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     TextFormField(
                       controller: emailController,
-                      validator: (v) => Validators.validateEmail(v ?? ""),
+                      focusNode: emailFocus,
+                      textInputAction: TextInputAction.next,
                       keyboardType: TextInputType.emailAddress,
+                      autovalidateMode: validateEmailNow
+                          ? AutovalidateMode.always
+                          : AutovalidateMode.disabled,
+                      validator: (v) => Validators.validateEmail(v ?? ""),
+                      onFieldSubmitted: (_) {
+                        FocusScope.of(context).requestFocus(passwordFocus);
+                      },
                       decoration: inputDecoration(
                         "Enter your email",
                         Icons.email_outlined,
@@ -130,7 +183,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     TextFormField(
                       controller: passwordController,
+                      focusNode: passwordFocus,
                       obscureText: hidePassword,
+                      textInputAction: TextInputAction.done,
+                      autovalidateMode: validatePasswordNow
+                          ? AutovalidateMode.always
+                          : AutovalidateMode.disabled,
                       validator: (v) => Validators.validatePassword(v ?? ""),
                       decoration: inputDecoration(
                         "Enter your password",
@@ -148,6 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           },
                         ),
                       ),
+                      onFieldSubmitted: (_) => login(),
                     ),
 
                     const SizedBox(height: 12),
@@ -159,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           activeColor: AppColors.primary,
                           onChanged: (v) {
                             setState(() {
-                              rememberMe = v!;
+                              rememberMe = v ?? false;
                             });
                           },
                         ),

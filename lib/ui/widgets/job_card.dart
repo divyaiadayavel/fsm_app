@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_ui.dart';
 
 class JobCard extends StatelessWidget {
   final String title;
@@ -43,85 +44,104 @@ class JobCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 18),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: [
           Container(
-            width: 5,
-            height: 230,
+            width: 4,
+            height: 170,
             decoration: BoxDecoration(
               color: sideColor,
               borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(24),
+                left: Radius.circular(18),
               ),
             ),
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       badge(priority.toUpperCase(), tagColor(priority)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       badge(status.toUpperCase(), tagColor(status)),
                       const Spacer(),
-                      const Icon(Icons.more_vert, color: Colors.black54),
+                      const Icon(
+                        Icons.more_vert,
+                        color: Colors.black54,
+                        size: 18,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+
+                  const SizedBox(height: 10),
 
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 28,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                   ),
 
+                  const SizedBox(height: 2),
+
                   Text(
                     company,
-                    style: const TextStyle(fontSize: 20, color: Colors.black87),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
                   Row(
                     children: [
                       const Icon(
                         Icons.location_on_outlined,
                         color: Colors.black54,
+                        size: 16,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           location,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.black87,
-                            fontSize: 18,
+                            fontSize: 13,
                           ),
                         ),
                       ),
                     ],
                   ),
 
-                  const Divider(color: Color(0xFFE5E7EB), height: 30),
+                  const Divider(color: Color(0xFFE5E7EB), height: 22),
 
                   Row(
                     children: [
                       CircleAvatar(
-                        radius: 24,
+                        radius: 18,
                         backgroundColor: const Color(0xFFEDE9FE),
-                        child: Icon(Icons.person, color: AppColors.primary),
+                        child: Icon(
+                          Icons.person,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                       ),
-                      const SizedBox(width: 14),
+
+                      const SizedBox(width: 10),
 
                       Expanded(
                         child: Column(
@@ -129,8 +149,10 @@ class JobCard extends StatelessWidget {
                           children: [
                             Text(
                               technician,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 14,
                                 color: Colors.black,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -139,7 +161,7 @@ class JobCard extends StatelessWidget {
                               "FIELD TECH",
                               style: TextStyle(
                                 color: Colors.black54,
-                                fontSize: 14,
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -147,16 +169,16 @@ class JobCard extends StatelessWidget {
                       ),
 
                       Container(
-                        height: 52,
-                        width: 52,
+                        height: 38,
+                        width: 38,
                         decoration: BoxDecoration(
                           color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
                           Icons.chevron_right,
                           color: Colors.black,
-                          size: 34,
+                          size: 24,
                         ),
                       ),
                     ],
@@ -172,17 +194,17 @@ class JobCard extends StatelessWidget {
 
   Widget badge(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(.12),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         text,
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w700,
-          fontSize: 13,
+          fontSize: 10,
         ),
       ),
     );

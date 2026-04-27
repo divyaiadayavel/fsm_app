@@ -26,6 +26,7 @@ class _JobsScreenState extends State<JobsScreen> {
 
   @override
   void dispose() {
+    searchController.removeListener(applyFilters);
     searchController.dispose();
     super.dispose();
   }
@@ -39,12 +40,18 @@ class _JobsScreenState extends State<JobsScreen> {
     final query = searchController.text.toLowerCase().trim();
 
     filteredJobs = allJobs.where((job) {
-      return job["title"].toLowerCase().contains(query) ||
-          job["customer"].toLowerCase().contains(query) ||
-          job["location"].toLowerCase().contains(query);
+      final title = job["title"].toString().toLowerCase();
+      final customer = job["customer"].toString().toLowerCase();
+      final location = job["location"].toString().toLowerCase();
+
+      return title.contains(query) ||
+          customer.contains(query) ||
+          location.contains(query);
     }).toList();
 
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Color getSideColor(String priority) {
@@ -60,11 +67,14 @@ class _JobsScreenState extends State<JobsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final scale = (size.width / 400).clamp(0.85, 1.0);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: AppUI.screen,
+          padding: EdgeInsets.all(AppUI.screen.left * scale),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -73,13 +83,13 @@ class _JobsScreenState extends State<JobsScreen> {
                   Icon(
                     Icons.work_outline,
                     color: AppColors.textPrimary,
-                    size: AppUI.subTitle,
+                    size: AppUI.subTitle * scale,
                   ),
-                  const SizedBox(width: AppUI.gapSm),
+                  SizedBox(width: AppUI.gapSm * scale),
                   Text(
                     "Jobs",
                     style: TextStyle(
-                      fontSize: AppUI.title,
+                      fontSize: AppUI.title * scale,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
@@ -87,57 +97,76 @@ class _JobsScreenState extends State<JobsScreen> {
                 ],
               ),
 
-              const SizedBox(height: AppUI.gapMd),
+              SizedBox(height: AppUI.gapMd * scale),
 
               Container(
-                height: AppUI.inputHeight,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                height: (AppUI.inputHeight * scale).clamp(40.0, 52.0),
+                padding: EdgeInsets.symmetric(horizontal: 12 * scale),
                 decoration: BoxDecoration(
                   color: AppColors.card,
-                  borderRadius: BorderRadius.circular(AppUI.radiusMd),
+                  borderRadius: BorderRadius.circular(AppUI.radiusMd * scale),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: TextField(
                   controller: searchController,
-                  style: TextStyle(color: AppColors.textPrimary),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13 * scale,
+                  ),
                   decoration: InputDecoration(
-                    icon: Icon(Icons.search, color: AppColors.textSecondary),
+                    icon: Icon(
+                      Icons.search,
+                      color: AppColors.textSecondary,
+                      size: 18 * scale,
+                    ),
                     hintText: "Search jobs...",
-                    hintStyle: TextStyle(color: AppColors.textSecondary),
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13 * scale,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
               ),
 
-              const SizedBox(height: AppUI.gapMd),
+              SizedBox(height: AppUI.gapMd * scale),
 
               Expanded(
-                child: filteredJobs.isEmpty
-                    ? Center(
-                        child: Text(
-                          "No jobs found",
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: AppUI.body,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: filteredJobs.length,
-                        itemBuilder: (context, index) {
-                          final job = filteredJobs[index];
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: loadJobs,
+                  child: filteredJobs.isEmpty
+                      ? ListView(
+                          children: [
+                            SizedBox(height: 150 * scale),
+                            Center(
+                              child: Text(
+                                "No jobs found",
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: AppUI.body * scale,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          itemCount: filteredJobs.length,
+                          itemBuilder: (context, index) {
+                            final job = filteredJobs[index];
 
-                          return JobCard(
-                            title: job["title"],
-                            company: job["customer"],
-                            location: job["location"],
-                            technician: job["technician"],
-                            priority: job["priority"],
-                            status: job["status"],
-                            sideColor: getSideColor(job["priority"]),
-                          );
-                        },
-                      ),
+                            return JobCard(
+                              title: job["title"],
+                              company: job["customer"],
+                              location: job["location"],
+                              technician: job["technician"],
+                              priority: job["priority"],
+                              status: job["status"],
+                              sideColor: getSideColor(job["priority"]),
+                            );
+                          },
+                        ),
+                ),
               ),
             ],
           ),

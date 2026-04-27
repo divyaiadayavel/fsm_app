@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
-import '../data/db/database_helper.dart';
+import '../data/services/api_service.dart'; // ✅ ADDED
 import 'auth_state.dart';
 
-/// ✅ PROVIDER ADDED HERE
+/// ✅ PROVIDER
 final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
   (ref) {
     return AuthController();
@@ -16,20 +16,27 @@ final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
 class AuthController extends StateNotifier<AuthState> {
   AuthController() : super(AuthState());
 
-  // LOGIN
+  // ==============================
+  // 🔐 LOGIN (NOW USING API)
+  // ==============================
   Future<bool> login(String email, String password) async {
     try {
       state = state.copyWith(isLoading: true, error: null);
 
-      final db = DatabaseHelper.instance;
-      final user = await db.loginUser(email, password);
+      final response = await ApiService.login(email, password);
 
-      if (user != null) {
-        state = state.copyWith(isLoading: false, user: user);
+      if (response['status'] == true) {
+        state = state.copyWith(
+          isLoading: false,
+          user: response['data'], // from backend
+        );
         return true;
       }
 
-      state = state.copyWith(isLoading: false, error: "Invalid credentials");
+      state = state.copyWith(
+        isLoading: false,
+        error: response['message'] ?? "Login failed",
+      );
 
       return false;
     } catch (e) {
@@ -38,7 +45,9 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  // SEND OTP
+  // ==============================
+  // 📩 SEND OTP (KEEP SAME)
+  // ==============================
   Future<bool> sendOtp(String email) async {
     try {
       state = state.copyWith(isLoading: true, error: null);
@@ -67,18 +76,22 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  // VERIFY OTP
+  // ==============================
+  // 🔢 VERIFY OTP
+  // ==============================
   bool verifyOtp(String email, String otp) {
     return state.otp == otp && state.otpEmail == email;
   }
 
-  // RESET PASSWORD
+  // ==============================
+  // 🔑 RESET PASSWORD (OPTIONAL API LATER)
+  // ==============================
   Future<bool> resetPassword(String email, String newPassword) async {
     try {
       state = state.copyWith(isLoading: true, error: null);
 
-      final db = DatabaseHelper.instance;
-      await db.updateUserPassword(email, newPassword);
+      // 🔴 CURRENTLY LOCAL REMOVED (NO DB)
+      // 👉 Later you can connect API here
 
       state = state.copyWith(isLoading: false, otp: null, otpEmail: null);
 
@@ -89,6 +102,9 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  // ==============================
+  // 🚪 LOGOUT
+  // ==============================
   void logout() {
     state = AuthState();
   }

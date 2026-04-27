@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_ui.dart';
 import '../../data/db/database_helper.dart';
 import 'package:fsm_app/views/auth/login_screen.dart';
+import 'package:image_picker/image_picker.dart';
 
 class TechnicianDashboardScreen extends StatefulWidget {
   final String? technicianEmail;
@@ -17,6 +22,9 @@ class TechnicianDashboardScreen extends StatefulWidget {
 class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
   List<Map<String, dynamic>> jobs = [];
   String technicianName = "Technician";
+
+  // IMAGE ONLY FEATURE ADDED
+  String imagePath = "";
 
   @override
   void initState() {
@@ -51,9 +59,48 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
       }
     }
 
+    await loadProfileImage();
+
     setState(() {
       jobs = assignedJobs;
     });
+  }
+
+  // LOAD SAVED IMAGE
+  Future<void> loadProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final key =
+        widget.technicianEmail != null && widget.technicianEmail!.isNotEmpty
+        ? "tech_image_${widget.technicianEmail}"
+        : "tech_image_$technicianName";
+
+    imagePath = prefs.getString(key) ?? "";
+  }
+
+  // SAVE IMAGE
+  Future<void> saveProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final key =
+        widget.technicianEmail != null && widget.technicianEmail!.isNotEmpty
+        ? "tech_image_${widget.technicianEmail}"
+        : "tech_image_$technicianName";
+
+    await prefs.setString(key, imagePath);
+  }
+
+  // PICK IMAGE
+  Future<void> pickImage() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+
+    if (picked != null) {
+      setState(() {
+        imagePath = picked.path;
+      });
+
+      await saveProfileImage();
+    }
   }
 
   Future<void> logout() async {
@@ -137,7 +184,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                 );
 
                 Navigator.pop(context);
-                loadData(); // refresh technician screen
+                loadData();
               },
               child: const Text("Save"),
             ),
@@ -189,10 +236,18 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Color(0xFFE5E7EB),
-                    child: Icon(Icons.person, color: Colors.black),
+                  GestureDetector(
+                    onTap: pickImage,
+                    child: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: const Color(0xFFE5E7EB),
+                      backgroundImage: imagePath.isNotEmpty
+                          ? FileImage(File(imagePath))
+                          : null,
+                      child: imagePath.isEmpty
+                          ? const Icon(Icons.person, color: Colors.black)
+                          : null,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -205,10 +260,10 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: loadData,
-                    icon: const Icon(Icons.refresh, color: Colors.black),
-                  ),
+                  // IconButton(
+                  //   onPressed: loadData,
+                  //   icon: const Icon(Icons.refresh, color: Colors.black),
+                  // ),
                 ],
               ),
 
@@ -304,7 +359,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                   elevation: 0,
                 ),
                 child: const Text(
-                  "View",
+                  "Update status",
                   style: TextStyle(color: Colors.white),
                 ),
               ),

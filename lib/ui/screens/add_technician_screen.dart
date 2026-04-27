@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_ui.dart';
 
 class AddTechnicianScreen extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic>) onSave;
@@ -21,135 +19,103 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
   bool isLoading = false;
   bool obscurePassword = true;
 
-  void showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Future<void> saveTechnician() async {
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-    final phone = phoneController.text.trim();
-
-    if (name.isEmpty) {
-      return showMsg("Enter technician name");
-    }
-
-    if (!RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
-      return showMsg("Enter valid email");
-    }
-
-    if (password.isEmpty) {
-      return showMsg("Enter password");
-    }
-
-    if (password.length < 6) {
-      return showMsg("Password must be at least 6 characters");
-    }
-
-    if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
-      return showMsg("Enter valid 10 digit phone");
-    }
-
-    setState(() => isLoading = true);
-
-    await widget.onSave({
-      "name": name,
-      "email": email,
-      "password": password,
-      "phone": phone,
-      "role": role,
-      "jobs": 0,
-      "online": 1,
-    });
-
-    if (mounted) {
-      setState(() => isLoading = false);
-      Navigator.pop(context, true);
-    }
-  }
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    phoneController.dispose();
-    super.dispose();
-  }
+  // COLORS MATCHING YOUR IMAGE
+  final Color greyBoxColor = const Color(
+    0xFFF2F2F2,
+  ); // Consistent grey for all boxes
+  final Color primaryBlue = const Color(
+    0xFF4C61EE,
+  ); // Vibrant blue for Save button
+  final Color blackTextColor = Colors.black;
+  final Color greyTextColor = Colors.black54;
 
   @override
   Widget build(BuildContext context) {
+    final scale = MediaQuery.of(context).size.width / 400;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
-          padding: AppUI.screen,
+          padding: EdgeInsets.symmetric(horizontal: 24 * scale),
           child: ListView(
             children: [
-              const SizedBox(height: 8),
-
-              const Text(
+              SizedBox(height: 30 * scale),
+              Text(
                 "Add Technician",
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 26 * scale,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: blackTextColor,
                 ),
               ),
-
-              const SizedBox(height: 10),
-
-              const Text(
+              SizedBox(height: 8 * scale),
+              Text(
                 "Create and manage your field workforce",
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                style: TextStyle(fontSize: 15 * scale, color: greyTextColor),
               ),
+              SizedBox(height: 30 * scale),
 
-              const SizedBox(height: 30),
+              // NAME FIELD
+              buildInputField(
+                controller: nameController,
+                hint: "Full Name",
+                icon: Icons.person_outline_rounded,
+                scale: scale,
+              ),
+              SizedBox(height: 16 * scale),
 
-              inputField(controller: nameController, hint: "Full Name"),
-
-              const SizedBox(height: 18),
-
-              inputField(
+              // EMAIL FIELD
+              buildInputField(
                 controller: emailController,
                 hint: "Email Address",
+                icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
+                scale: scale,
               ),
+              SizedBox(height: 16 * scale),
 
-              const SizedBox(height: 18),
+              // PASSWORD FIELD
+              buildPasswordField(scale),
+              SizedBox(height: 16 * scale),
 
-              passwordField(),
-
-              const SizedBox(height: 18),
-
-              inputField(
+              // PHONE FIELD
+              buildInputField(
                 controller: phoneController,
                 hint: "Phone Number",
+                icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
+                scale: scale,
+              ),
+              SizedBox(height: 16 * scale),
+
+              // DROPDOWN (MANAGER)
+              buildDropdownField(scale),
+
+              SizedBox(height: 35 * scale),
+
+              // SAVE BUTTON (Blue)
+              buildActionButton(
+                "Save Technician",
+                primaryBlue,
+                Colors.white,
+                scale,
+                () {},
               ),
 
-              const SizedBox(height: 18),
+              SizedBox(height: 12 * scale),
 
-              dropdownField(),
-
-              const SizedBox(height: 30),
-
-              actionButton(
-                title: "Save Technician",
-                primary: true,
-                onTap: isLoading ? null : saveTechnician,
+              // CANCEL BUTTON (Grey - Matching Input Fields)
+              buildActionButton(
+                "Cancel",
+                greyBoxColor,
+                blackTextColor,
+                scale,
+                () {
+                  Navigator.pop(context);
+                },
               ),
-
-              const SizedBox(height: 14),
-
-              actionButton(
-                title: "Cancel",
-                primary: false,
-                onTap: () => Navigator.pop(context),
-              ),
-
-              const SizedBox(height: 10),
+              SizedBox(height: 20 * scale),
             ],
           ),
         ),
@@ -157,139 +123,123 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
     );
   }
 
-  Widget inputField({
+  // --- COMPONENT HELPERS ---
+
+  Widget buildInputField({
     required TextEditingController controller,
     required String hint,
+    required IconData icon,
+    required double scale,
     TextInputType keyboardType = TextInputType.text,
   }) {
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          style: const TextStyle(color: Colors.black, fontSize: 18),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            hintText: hint,
-            hintStyle: const TextStyle(color: Colors.black54, fontSize: 18),
-          ),
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: blackTextColor, fontSize: 16 * scale),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: greyTextColor, fontSize: 16 * scale),
+        prefixIcon: Icon(icon, color: greyTextColor, size: 22 * scale),
+        filled: true,
+        fillColor: greyBoxColor, // This adds the grey box background
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none, // Removes the line border
         ),
+        contentPadding: EdgeInsets.symmetric(vertical: 18 * scale),
       ),
     );
   }
 
-  Widget passwordField() {
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: TextField(
-          controller: passwordController,
-          obscureText: obscurePassword,
-          style: const TextStyle(color: Colors.black, fontSize: 18),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            hintText: "Password",
-            hintStyle: const TextStyle(color: Colors.black54, fontSize: 18),
-            suffixIcon: IconButton(
-              icon: Icon(
-                obscurePassword
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                color: Colors.black54,
-              ),
-              onPressed: () {
-                setState(() {
-                  obscurePassword = !obscurePassword;
-                });
-              },
-            ),
-          ),
+  Widget buildPasswordField(double scale) {
+    return TextField(
+      controller: passwordController,
+      obscureText: obscurePassword,
+      style: TextStyle(color: blackTextColor, fontSize: 16 * scale),
+      decoration: InputDecoration(
+        hintText: "Password",
+        hintStyle: TextStyle(color: greyTextColor, fontSize: 16 * scale),
+        prefixIcon: Icon(
+          Icons.lock_outline_rounded,
+          color: greyTextColor,
+          size: 22 * scale,
         ),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscurePassword
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+            color: greyTextColor,
+            size: 20 * scale,
+          ),
+          onPressed: () => setState(() => obscurePassword = !obscurePassword),
+        ),
+        filled: true,
+        fillColor: greyBoxColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: EdgeInsets.symmetric(vertical: 18 * scale),
       ),
     );
   }
 
-  Widget dropdownField() {
-    final roles = [
-      "Manager",
-      "Senior Technician",
-      "Junior Technician",
-      "Labour",
-    ];
-
+  Widget buildDropdownField(double scale) {
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: 12 * scale),
       decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(20),
+        color: greyBoxColor, // Matching grey box
+        borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: role,
           isExpanded: true,
-          dropdownColor: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          style: const TextStyle(color: Colors.black, fontSize: 18),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.black54,
-          ),
-          items: roles.map((item) {
-            return DropdownMenuItem<String>(value: item, child: Text(item));
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              role = value!;
-            });
-          },
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: greyTextColor),
+          items: ["Manager", "Technician", "Labour"]
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(
+                    e,
+                    style: TextStyle(
+                      color: blackTextColor,
+                      fontSize: 16 * scale,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (val) => setState(() => role = val!),
         ),
       ),
     );
   }
 
-  Widget actionButton({
-    required String title,
-    required bool primary,
-    required VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 58,
-        decoration: BoxDecoration(
-          color: primary ? AppColors.primary : const Color(0xFFEDEDED),
-          borderRadius: BorderRadius.circular(20),
+  Widget buildActionButton(
+    String label,
+    Color bg,
+    Color text,
+    double scale,
+    VoidCallback tap,
+  ) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56 * scale,
+      child: ElevatedButton(
+        onPressed: tap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bg,
+          foregroundColor: text,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        child: Center(
-          child: isLoading && primary
-              ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: primary ? Colors.white : Colors.black,
-                  ),
-                ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 16 * scale, fontWeight: FontWeight.bold),
         ),
       ),
     );

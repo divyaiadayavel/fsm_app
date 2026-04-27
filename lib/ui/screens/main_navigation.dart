@@ -1,62 +1,52 @@
 import 'package:flutter/material.dart';
 
 import 'dashboard_screen.dart';
-import 'jobs_screen.dart';
 import 'create_job_screen.dart';
+import 'jobs_screen.dart';
 import 'technicians_screen.dart';
-
-import '../widgets/custom_bottom_nav.dart';
 import '../../core/constants/app_colors.dart';
 
-class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int currentIndex = 0;
-  int refreshKey = 0;
 
-  void changeTab(int index) {
-    setState(() {
-      currentIndex = index;
-    });
-  }
-
-  void refreshApp() {
-    setState(() {
-      refreshKey++;
-    });
-  }
-
-  Future<void> openCreateJob() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => CreateJobScreen(onSaved: refreshApp)),
-    );
-
-    refreshApp();
-  }
+  late final List<Widget> screens = [
+    const AdminDashboard(),
+    CreateJobScreen(onSaved: () {}),
+    const JobsScreen(),
+    const TechniciansScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> screens = [
-      AdminDashboard(key: ValueKey("dash$refreshKey")),
-      JobsScreen(key: ValueKey("jobs$refreshKey")),
-      TechniciansScreen(key: ValueKey("tech$refreshKey")),
-    ];
-
     return Scaffold(
-      backgroundColor: AppColors.background,
+      body: screens[currentIndex],
 
-      body: IndexedStack(index: currentIndex, children: screens),
-
-      bottomNavigationBar: CustomBottomNav(
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap: changeTab,
-        onAddTap: openCreateJob,
+        onTap: (index) {
+          setState(() {
+            currentIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle),
+            label: "Create",
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.work), label: "Jobs"),
+          BottomNavigationBarItem(icon: Icon(Icons.groups), label: "Techs"),
+        ],
       ),
     );
   }
