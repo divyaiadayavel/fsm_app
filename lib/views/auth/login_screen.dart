@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/validators.dart';
 import '../../riverpod/auth_controller.dart';
 
+import '../../data/services/api_service.dart';
 import '../../ui/screens/main_navigation.dart';
 import '../../ui/screens/technician_dashboard_screen.dart';
 import 'forgot_password_screen.dart';
@@ -30,6 +31,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool validateEmailNow = false;
   bool validatePasswordNow = false;
+
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -63,6 +66,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  // ==========================
+  // LOGIN (MERGED FINAL)
+  // ==========================
   Future<void> login() async {
     setState(() {
       validateEmailNow = true;
@@ -73,32 +79,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final auth = ref.read(authControllerProvider.notifier);
 
+    setState(() => isLoading = true);
+
+    // ✅ CALL BOTH (to keep your provider logic intact)
     final success = await auth.login(
+      emailController.text.trim(),
+      passwordController.text.trim(),
+    );
+
+    // ✅ ALSO GET API RESPONSE DIRECTLY (NO SQLITE)
+    final res = await ApiService.login(
       emailController.text.trim(),
       passwordController.text.trim(),
     );
 
     if (!mounted) return;
 
-    if (success) {
-      final user = ref.read(authControllerProvider).user;
+    setState(() => isLoading = false);
 
-      if (user != null && user["role"] == "admin") {
+    // ==========================
+    // SUCCESS
+    // ==========================
+    if (success && res['status'] == true && res['data'] != null) {
+      final user = res['data'] as Map<String, dynamic>;
+
+      // ✅ ADMIN
+      if (user["role"] == "admin") {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
         );
-      } else {
+      }
+      // ✅ TECHNICIAN
+      else {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) =>
-                TechnicianDashboardScreen(technicianEmail: user?["email"]),
+            builder: (_) => TechnicianDashboardScreen(
+              technicianId: int.tryParse(user["id"].toString()),
+              technicianName: user["name"] ?? "Technician",
+            ),
           ),
         );
       }
     } else {
-      final error = ref.read(authControllerProvider).error ?? "Login failed";
+      final error =
+          res['message'] ??
+          ref.read(authControllerProvider).error ??
+          "Login failed";
 
       ScaffoldMessenger.of(
         context,
@@ -250,14 +278,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: authState.isLoading ? null : login,
+                        onPressed: (authState.isLoading || isLoading)
+                            ? null
+                            : login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: authState.isLoading
+                        child: (authState.isLoading || isLoading)
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )

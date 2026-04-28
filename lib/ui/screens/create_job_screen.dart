@@ -20,13 +20,14 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   List<Map<String, dynamic>> technicians = [];
 
-  int? technicianId; // ✅ ID instead of name
+  int? technicianId;
   String priority = "High";
 
   double? selectedLat;
   double? selectedLng;
 
   bool isLoading = false;
+  bool isTechLoading = true;
 
   final Color greyBoxColor = const Color(0xFFF2F2F2);
   final Color primaryBlue = const Color(0xFF4C61EE);
@@ -47,29 +48,38 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     super.dispose();
   }
 
-  // ============================
-  // 📋 LOAD TECHNICIANS (API)
-  // ============================
+  void showMsg(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ==========================
+  // LOAD TECHNICIANS
+  // ==========================
   Future<void> loadTechnicians() async {
-    final response = await ApiService.getTechnicians();
+    try {
+      final response = await ApiService.getTechnicians();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (response['status'] == true) {
-      setState(() {
+      if (response['status'] == true) {
         technicians = List<Map<String, dynamic>>.from(response['data']);
 
         if (technicians.isNotEmpty) {
-          technicianId =
-              int.parse(technicians.first["id"].toString());
+          technicianId = int.tryParse(technicians.first["id"].toString());
         }
-      });
+      } else {
+        showMsg("Failed to load technicians");
+      }
+    } catch (e) {
+      showMsg("Error loading technicians");
     }
+
+    if (mounted) setState(() => isTechLoading = false);
   }
 
-  // ============================
-  // 📍 GET LAT LNG FROM ADDRESS
-  // ============================
+  // ==========================
+  // LOCATION
+  // ==========================
   Future<void> updateCoordinatesFromAddress() async {
     final text = locationController.text.trim();
 
@@ -78,33 +88,25 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     setState(() => isLoading = true);
 
     try {
-      final result =
-          await locationFromAddress("$text, Tamil Nadu, India");
+      final result = await locationFromAddress("$text, Tamil Nadu, India");
 
       if (result.isNotEmpty) {
-        setState(() {
-          selectedLat = result.first.latitude;
-          selectedLng = result.first.longitude;
-        });
+        selectedLat = result.first.latitude;
+        selectedLng = result.first.longitude;
       }
-    } catch (_) {} finally {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+    } catch (_) {
+      showMsg("Location not found");
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
-  // ============================
-  // 🗺 MAP PICKER
-  // ============================
   Future<void> pickLocation() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MapPickerScreen(
-          initialLat: selectedLat,
-          initialLng: selectedLng,
-        ),
+        builder: (_) =>
+            MapPickerScreen(initialLat: selectedLat, initialLng: selectedLng),
       ),
     );
 
@@ -117,32 +119,51 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     }
   }
 
-  // ============================
-  // 💾 SAVE JOB (API)
-  // ============================
+  // ==========================
+  // ✅ FIXED SAVE JOB (FINAL)
+  // ==========================
   Future<void> saveJob() async {
-    if (titleController.text.trim().isEmpty) return;
-    if (technicianId == null) return;
+    if (titleController.text.trim().isEmpty) {
+      showMsg("Title required");
+      return;
+    }
 
-    final response = await ApiService.createJob({
-      "title": titleController.text.trim(),
-      "customer": customerController.text.trim(),
-      "location": locationController.text.trim(),
-      "technician_id": technicianId,
-      "priority": priority,
-      "status": "Pending",
-      "lat": selectedLat,
-      "lng": selectedLng,
-    });
+    if (technicianId == null) {
+      showMsg("Select technician");
+      return;
+    }
 
-    if (response['status'] == true) {
-      widget.onSaved();
+    setState(() => isLoading = true);
 
-      if (mounted) Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response['message'] ?? "Failed")),
-      );
+    try {
+      final response = await ApiService.createJob({
+        "title": titleController.text.trim(),
+        "customer": customerController.text.trim(),
+        "location": locationController.text.trim(),
+        "technician_id": technicianId.toString(), // ✅ FIX
+        "priority": priority,
+        "status": "Pending",
+        "lat": selectedLat ?? 0,
+        "lng": selectedLng ?? 0,
+      });
+
+      print("CREATE JOB RESPONSE: $response");
+
+      if (!mounted) return;
+
+      setState(() => isLoading = false);
+
+      if (response['status'] == true) {
+        // ✅ SAFE NAVIGATION
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context, true);
+        }
+      } else {
+        showMsg(response['message'] ?? "Failed to create job");
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      showMsg("Error: $e");
     }
   }
 
@@ -180,48 +201,49 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
               SizedBox(height: 20 * scale),
 
               sectionTitle("JOB TITLE"),
-              buildTextField(titleController, "Enter job title", scale),
+              buildTextField(titleController, "Enter job title"),
 
               SizedBox(height: 16 * scale),
 
               sectionTitle("CUSTOMER NAME"),
-              buildTextField(customerController, "Enter customer name", scale),
+              buildTextField(customerController, "Enter customer name"),
 
               SizedBox(height: 16 * scale),
 
               sectionTitle("LOCATION"),
-              buildLocationField(scale),
+              buildLocationField(),
 
               SizedBox(height: 12 * scale),
 
-              GestureDetector(onTap: pickLocation, child: mapCard(scale)),
+              GestureDetector(onTap: pickLocation, child: mapCard()),
 
               SizedBox(height: 16 * scale),
 
               sectionTitle("ASSIGN TECHNICIAN"),
-              buildTechnicianDropdown(scale),
+              isTechLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : buildTechnicianDropdown(),
 
               SizedBox(height: 16 * scale),
 
               sectionTitle("PRIORITY LEVEL"),
               Row(
                 children: [
-                  Expanded(child: priorityButton("Low", scale)),
+                  Expanded(child: priorityButton("Low")),
                   SizedBox(width: 8 * scale),
-                  Expanded(child: priorityButton("Medium", scale)),
+                  Expanded(child: priorityButton("Medium")),
                   SizedBox(width: 8 * scale),
-                  Expanded(child: priorityButton("High", scale)),
+                  Expanded(child: priorityButton("High")),
                 ],
               ),
 
               SizedBox(height: 30 * scale),
 
               buildActionButton(
-                "Save Job",
+                isLoading ? "Saving..." : "Save Job",
                 primaryBlue,
                 Colors.white,
-                scale,
-                saveJob,
+                isLoading ? () {} : saveJob,
               ),
 
               SizedBox(height: 12 * scale),
@@ -230,7 +252,6 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                 "Cancel",
                 greyBoxColor,
                 blackText,
-                scale,
                 () => Navigator.pop(context),
               ),
 
@@ -256,8 +277,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  Widget buildTextField(
-      TextEditingController controller, String hint, double s) {
+  Widget buildTextField(TextEditingController controller, String hint) {
     return TextField(
       controller: controller,
       decoration: InputDecoration(
@@ -272,7 +292,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  Widget buildLocationField(double s) {
+  Widget buildLocationField() {
     return TextField(
       controller: locationController,
       onSubmitted: (_) => updateCoordinatesFromAddress(),
@@ -287,14 +307,18 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         suffixIcon: IconButton(
           onPressed: updateCoordinatesFromAddress,
           icon: isLoading
-              ? const CircularProgressIndicator()
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : Icon(Icons.search, color: primaryBlue),
         ),
       ),
     );
   }
 
-  Widget mapCard(double s) {
+  Widget mapCard() {
     return Container(
       height: 90,
       decoration: BoxDecoration(
@@ -311,7 +335,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  Widget buildTechnicianDropdown(double s) {
+  Widget buildTechnicianDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -324,27 +348,23 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
           isExpanded: true,
           items: technicians.map((e) {
             return DropdownMenuItem<int>(
-              value: int.parse(e["id"].toString()),
-              child: Text(e["name"]),
+              value: int.tryParse(e["id"].toString()),
+              child: Text(e["name"] ?? ""),
             );
           }).toList(),
           onChanged: (value) {
-            setState(() {
-              technicianId = value;
-            });
+            setState(() => technicianId = value);
           },
         ),
       ),
     );
   }
 
-  Widget priorityButton(String value, double s) {
+  Widget priorityButton(String value) {
     final active = priority == value;
 
     return GestureDetector(
-      onTap: () {
-        setState(() => priority = value);
-      },
+      onTap: () => setState(() => priority = value),
       child: Container(
         height: 44,
         decoration: BoxDecoration(
@@ -354,9 +374,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         child: Center(
           child: Text(
             value,
-            style: TextStyle(
-              color: active ? Colors.white : blackText,
-            ),
+            style: TextStyle(color: active ? Colors.white : blackText),
           ),
         ),
       ),
@@ -364,15 +382,17 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   }
 
   Widget buildActionButton(
-      String label, Color bg, Color text, double s, VoidCallback tap) {
+    String label,
+    Color bg,
+    Color text,
+    VoidCallback tap,
+  ) {
     return SizedBox(
       height: 50,
       child: ElevatedButton(
         onPressed: tap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bg,
-        ),
-        child: Text(label),
+        style: ElevatedButton.styleFrom(backgroundColor: bg),
+        child: Text(label, style: TextStyle(color: text)),
       ),
     );
   }

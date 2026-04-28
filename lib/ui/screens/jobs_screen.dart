@@ -1,7 +1,8 @@
+// jobs_screen.dart
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_ui.dart';
-import '../../data/db/database_helper.dart';
+import '../../data/services/api_service.dart';
 import '../widgets/job_card.dart';
 
 class JobsScreen extends StatefulWidget {
@@ -17,6 +18,9 @@ class _JobsScreenState extends State<JobsScreen> {
 
   final searchController = TextEditingController();
 
+  bool isLoading = true;
+  String? error;
+
   @override
   void initState() {
     super.initState();
@@ -31,30 +35,53 @@ class _JobsScreenState extends State<JobsScreen> {
     super.dispose();
   }
 
+  // ==============================
+  // LOAD JOBS (API)
+  // ==============================
   Future<void> loadJobs() async {
-    allJobs = await DatabaseHelper.instance.getJobs();
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
+
+    final response = await ApiService.getJobs();
+
+    if (response['status'] == true) {
+      allJobs = List<Map<String, dynamic>>.from(response['data'] ?? []);
+    } else {
+      error = response['message'] ?? "Failed to load jobs";
+    }
+
     applyFilters();
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
+  // ==============================
+  // FILTER
+  // ==============================
   void applyFilters() {
     final query = searchController.text.toLowerCase().trim();
 
     filteredJobs = allJobs.where((job) {
-      final title = job["title"].toString().toLowerCase();
-      final customer = job["customer"].toString().toLowerCase();
-      final location = job["location"].toString().toLowerCase();
+      final title = (job["title"] ?? "").toString().toLowerCase();
+      final customer = (job["customer"] ?? "").toString().toLowerCase();
+      final location = (job["location"] ?? "").toString().toLowerCase();
 
       return title.contains(query) ||
           customer.contains(query) ||
           location.contains(query);
     }).toList();
 
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
-  Color getSideColor(String priority) {
+  // ==============================
+  // PRIORITY COLOR
+  // ==============================
+  Color getSideColor(String? priority) {
     switch (priority) {
       case "High":
         return AppColors.error;
@@ -78,6 +105,7 @@ class _JobsScreenState extends State<JobsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // HEADER
               Row(
                 children: [
                   Icon(
@@ -99,6 +127,7 @@ class _JobsScreenState extends State<JobsScreen> {
 
               SizedBox(height: AppUI.gapMd * scale),
 
+              // SEARCH
               Container(
                 height: (AppUI.inputHeight * scale).clamp(40.0, 52.0),
                 padding: EdgeInsets.symmetric(horizontal: 12 * scale),
@@ -131,11 +160,29 @@ class _JobsScreenState extends State<JobsScreen> {
 
               SizedBox(height: AppUI.gapMd * scale),
 
+              // BODY
               Expanded(
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: loadJobs,
-                  child: filteredJobs.isEmpty
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : error != null
+                      ? ListView(
+                          children: [
+                            SizedBox(height: 150 * scale),
+                            Center(
+                              child: Text(
+                                error!,
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: AppUI.body * scale,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : filteredJobs.isEmpty
                       ? ListView(
                           children: [
                             SizedBox(height: 150 * scale),
@@ -156,12 +203,12 @@ class _JobsScreenState extends State<JobsScreen> {
                             final job = filteredJobs[index];
 
                             return JobCard(
-                              title: job["title"],
-                              company: job["customer"],
-                              location: job["location"],
-                              technician: job["technician"],
-                              priority: job["priority"],
-                              status: job["status"],
+                              title: job["title"] ?? "",
+                              company: job["customer"] ?? "",
+                              location: job["location"] ?? "",
+                              technician: job["technician"] ?? "",
+                              priority: job["priority"] ?? "",
+                              status: job["status"] ?? "",
                               sideColor: getSideColor(job["priority"]),
                             );
                           },

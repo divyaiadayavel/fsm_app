@@ -19,13 +19,8 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
   bool isLoading = false;
   bool obscurePassword = true;
 
-  // COLORS MATCHING YOUR IMAGE
-  final Color greyBoxColor = const Color(
-    0xFFF2F2F2,
-  ); // Consistent grey for all boxes
-  final Color primaryBlue = const Color(
-    0xFF4C61EE,
-  ); // Vibrant blue for Save button
+  final Color greyBoxColor = const Color(0xFFF2F2F2);
+  final Color primaryBlue = const Color(0xFF4C61EE);
   final Color blackTextColor = Colors.black;
   final Color greyTextColor = Colors.black54;
 
@@ -56,7 +51,6 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
               ),
               SizedBox(height: 30 * scale),
 
-              // NAME FIELD
               buildInputField(
                 controller: nameController,
                 hint: "Full Name",
@@ -65,7 +59,6 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
               ),
               SizedBox(height: 16 * scale),
 
-              // EMAIL FIELD
               buildInputField(
                 controller: emailController,
                 hint: "Email Address",
@@ -75,11 +68,9 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
               ),
               SizedBox(height: 16 * scale),
 
-              // PASSWORD FIELD
               buildPasswordField(scale),
               SizedBox(height: 16 * scale),
 
-              // PHONE FIELD
               buildInputField(
                 controller: phoneController,
                 hint: "Phone Number",
@@ -89,32 +80,28 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
               ),
               SizedBox(height: 16 * scale),
 
-              // DROPDOWN (MANAGER)
               buildDropdownField(scale),
-
               SizedBox(height: 35 * scale),
 
-              // SAVE BUTTON (Blue)
+              // ✅ SAVE BUTTON FIXED
               buildActionButton(
-                "Save Technician",
+                isLoading ? "Saving..." : "Save Technician",
                 primaryBlue,
                 Colors.white,
                 scale,
-                () {},
+                isLoading ? () {} : saveTechnician,
               ),
 
               SizedBox(height: 12 * scale),
 
-              // CANCEL BUTTON (Grey - Matching Input Fields)
               buildActionButton(
                 "Cancel",
                 greyBoxColor,
                 blackTextColor,
                 scale,
-                () {
-                  Navigator.pop(context);
-                },
+                () => Navigator.pop(context),
               ),
+
               SizedBox(height: 20 * scale),
             ],
           ),
@@ -123,7 +110,64 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
     );
   }
 
-  // --- COMPONENT HELPERS ---
+  // ================= SAVE FUNCTION =================
+  Future<void> saveTechnician() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+    final phone = phoneController.text.trim();
+
+    // 🔒 VALIDATION
+    if (name.isEmpty) {
+      showMsg("Enter name");
+      return;
+    }
+
+    if (!RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$").hasMatch(email)) {
+      showMsg("Enter valid email");
+      return;
+    }
+
+    if (!RegExp(r"^[6-9]\d{9}$").hasMatch(phone)) {
+      showMsg("Enter valid 10-digit phone");
+      return;
+    }
+
+    if (password.length < 4) {
+      showMsg("Password must be at least 4 characters");
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      await widget.onSave({
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "role": role,
+        "jobs": 0,
+        "online": 0,
+        "password": password,
+      });
+
+      if (mounted) {
+        Navigator.pop(context, true); // ✅ triggers refresh
+      }
+    } catch (e) {
+      showMsg("Error: $e");
+    }
+
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void showMsg(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ================= UI HELPERS =================
 
   Widget buildInputField({
     required TextEditingController controller,
@@ -141,10 +185,10 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
         hintStyle: TextStyle(color: greyTextColor, fontSize: 16 * scale),
         prefixIcon: Icon(icon, color: greyTextColor, size: 22 * scale),
         filled: true,
-        fillColor: greyBoxColor, // This adds the grey box background
+        fillColor: greyBoxColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none, // Removes the line border
+          borderSide: BorderSide.none,
         ),
         contentPadding: EdgeInsets.symmetric(vertical: 18 * scale),
       ),
@@ -189,7 +233,7 @@ class _AddTechnicianScreenState extends State<AddTechnicianScreen> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12 * scale),
       decoration: BoxDecoration(
-        color: greyBoxColor, // Matching grey box
+        color: greyBoxColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(

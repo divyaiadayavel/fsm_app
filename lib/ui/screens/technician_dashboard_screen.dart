@@ -1,18 +1,22 @@
+// technician_dashboard_screen.dart
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_ui.dart';
-import '../../data/db/database_helper.dart';
+import '../../data/services/api_service.dart';
 import 'package:fsm_app/views/auth/login_screen.dart';
 import 'package:image_picker/image_picker.dart';
 
 class TechnicianDashboardScreen extends StatefulWidget {
-  final String? technicianEmail;
+  final int? technicianId;
+  final String? technicianName;
 
-  const TechnicianDashboardScreen({super.key, this.technicianEmail});
+  const TechnicianDashboardScreen({
+    super.key,
+    this.technicianId,
+    this.technicianName,
+  });
 
   @override
   State<TechnicianDashboardScreen> createState() =>
@@ -21,117 +25,108 @@ class TechnicianDashboardScreen extends StatefulWidget {
 
 class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
   List<Map<String, dynamic>> jobs = [];
-  String technicianName = "Technician";
 
-  // IMAGE ONLY FEATURE ADDED
+  String technicianName = "Technician";
+  int? technicianId;
+
   String imagePath = "";
+
+  bool isLoading = true;
+  String? error;
 
   @override
   void initState() {
     super.initState();
+
+    // ✅ DIRECT DATA FROM LOGIN (NO EMAIL MATCHING)
+    technicianId = widget.technicianId;
+    technicianName = widget.technicianName ?? "Technician";
+
     loadData();
   }
 
+  // ==========================
+  // LOAD DATA (FIXED)
+  // ==========================
   Future<void> loadData() async {
-    final allJobs = await DatabaseHelper.instance.getJobs();
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
 
-    if (!mounted) return;
+    try {
+      final jobRes = await ApiService.getJobs();
 
-    List<Map<String, dynamic>> assignedJobs = allJobs;
-
-    if (widget.technicianEmail != null && widget.technicianEmail!.isNotEmpty) {
-      final techs = await DatabaseHelper.instance.getTechnicians();
-
-      final matched = techs
-          .where((e) => e["email"] == widget.technicianEmail)
-          .toList();
-
-      if (matched.isNotEmpty) {
-        technicianName = matched.first["name"] ?? "Technician";
-
-        assignedJobs = allJobs.where((job) {
-          return job["technician"] == technicianName;
-        }).toList();
+      if (jobRes['status'] != true) {
+        throw Exception("Failed to load jobs");
       }
-    } else {
-      if (allJobs.isNotEmpty) {
-        technicianName = allJobs.first["technician"] ?? "Technician";
-      }
+
+      final allJobs = List<Map<String, dynamic>>.from(jobRes['data']);
+
+      final assignedJobs = allJobs.where((job) {
+        return job["technician_id"].toString() == technicianId.toString();
+      }).toList();
+
+      await loadProfileImage();
+
+      if (!mounted) return;
+
+      setState(() {
+        jobs = assignedJobs;
+      });
+    } catch (e) {
+      error = e.toString();
     }
 
-    await loadProfileImage();
-
-    setState(() {
-      jobs = assignedJobs;
-    });
+    if (mounted) setState(() => isLoading = false);
   }
 
-  // LOAD SAVED IMAGE
+  // ==========================
+  // PROFILE IMAGE
+  // ==========================
   Future<void> loadProfileImage() async {
     final prefs = await SharedPreferences.getInstance();
-
-    final key =
-        widget.technicianEmail != null && widget.technicianEmail!.isNotEmpty
-        ? "tech_image_${widget.technicianEmail}"
-        : "tech_image_$technicianName";
-
+    final key = "tech_image_$technicianId";
     imagePath = prefs.getString(key) ?? "";
   }
 
-  // SAVE IMAGE
   Future<void> saveProfileImage() async {
     final prefs = await SharedPreferences.getInstance();
-
-    final key =
-        widget.technicianEmail != null && widget.technicianEmail!.isNotEmpty
-        ? "tech_image_${widget.technicianEmail}"
-        : "tech_image_$technicianName";
-
+    final key = "tech_image_$technicianId";
     await prefs.setString(key, imagePath);
   }
 
-  // PICK IMAGE
   Future<void> pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-
     if (picked != null) {
-      setState(() {
-        imagePath = picked.path;
-      });
-
+      setState(() => imagePath = picked.path);
       await saveProfileImage();
     }
   }
 
+  // ==========================
+  // LOGOUT
+  // ==========================
   Future<void> logout() async {
-    if (!mounted) return;
-
-    final bool? confirmLogout = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Logout"),
-          content: const Text("Are you sure you want to logout?"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-              },
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-              child: const Text("Yes"),
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: const Text("Logout"),
+        content: const Text("Are you sure you want to logout?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Yes"),
+          ),
+        ],
+      ),
     );
 
-    if (confirmLogout == true) {
+    if (confirm == true) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
@@ -139,61 +134,61 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
     }
   }
 
+  // ==========================
+  // UPDATE STATUS
+  // ==========================
   Future<void> showStatusDialog(Map<String, dynamic> job) async {
     String selectedStatus = job["status"] ?? "Pending";
 
     await showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Update Job Status"),
-          content: StatefulBuilder(
-            builder: (context, setStateDialog) {
-              return DropdownButton<String>(
-                value: selectedStatus,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: "Pending", child: Text("Pending")),
-                  DropdownMenuItem(
-                    value: "In Progress",
-                    child: Text("In Progress"),
-                  ),
-                  DropdownMenuItem(
-                    value: "Completed",
-                    child: Text("Completed"),
-                  ),
-                ],
-                onChanged: (value) {
-                  setStateDialog(() {
-                    selectedStatus = value!;
-                  });
-                },
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await DatabaseHelper.instance.updateJobStatus(
-                  job["id"],
-                  selectedStatus,
-                );
-
-                Navigator.pop(context);
-                loadData();
+      builder: (_) => AlertDialog(
+        title: const Text("Update Job Status"),
+        content: StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return DropdownButton<String>(
+              value: selectedStatus,
+              isExpanded: true,
+              items: const [
+                DropdownMenuItem(value: "Pending", child: Text("Pending")),
+                DropdownMenuItem(
+                  value: "In Progress",
+                  child: Text("In Progress"),
+                ),
+                DropdownMenuItem(value: "Completed", child: Text("Completed")),
+              ],
+              onChanged: (v) {
+                setStateDialog(() {
+                  selectedStatus = v!;
+                });
               },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await ApiService.updateJob({
+                "id": job["id"],
+                "status": selectedStatus,
+              });
+              Navigator.pop(context);
+              loadData();
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
     );
   }
 
+  // ==========================
+  // COLORS
+  // ==========================
   Color statusColor(String status) {
     switch (status) {
       case "Pending":
@@ -218,6 +213,9 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
     }
   }
 
+  // ==========================
+  // UI
+  // ==========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -234,6 +232,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // PROFILE
               Row(
                 children: [
                   GestureDetector(
@@ -260,10 +259,6 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                       ),
                     ),
                   ),
-                  // IconButton(
-                  //   onPressed: loadData,
-                  //   icon: const Icon(Icons.refresh, color: Colors.black),
-                  // ),
                 ],
               ),
 
@@ -277,7 +272,11 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
               const SizedBox(height: 20),
 
               Expanded(
-                child: jobs.isEmpty
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : error != null
+                    ? Center(child: Text(error!))
+                    : jobs.isEmpty
                     ? const Center(
                         child: Text(
                           "No Jobs Assigned",
@@ -286,9 +285,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                       )
                     : ListView.builder(
                         itemCount: jobs.length,
-                        itemBuilder: (context, index) {
-                          return jobCard(jobs[index]);
-                        },
+                        itemBuilder: (_, i) => jobCard(jobs[i]),
                       ),
               ),
             ],
@@ -327,7 +324,6 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
                   ),
                 ),
               ),
@@ -348,9 +344,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
               priorityBadge(priority),
               const Spacer(),
               ElevatedButton(
-                onPressed: () {
-                  showStatusDialog(job);
-                },
+                onPressed: () => showStatusDialog(job),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(

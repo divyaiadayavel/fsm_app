@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_ui.dart';
-import '../../data/db/database_helper.dart';
+import '../../data/services/api_service.dart';
 import '../widgets/technician_tile.dart';
 import 'add_technician_screen.dart';
 
@@ -15,25 +15,58 @@ class TechniciansScreen extends StatefulWidget {
 class _TechniciansScreenState extends State<TechniciansScreen> {
   List<Map<String, dynamic>> technicians = [];
 
+  bool isLoading = true;
+  String? error;
+
   @override
   void initState() {
     super.initState();
     loadTechnicians();
   }
 
+  // ============================
+  // LOAD TECHNICIANS (API SAFE)
+  // ============================
   Future<void> loadTechnicians() async {
-    final data = await DatabaseHelper.instance.getTechnicians();
-
-    if (!mounted) return;
-
     setState(() {
-      technicians = data;
+      isLoading = true;
+      error = null;
     });
+
+    try {
+      final response = await ApiService.getTechnicians();
+
+      if (!mounted) return;
+
+      setState(() {
+        technicians = response['status'] == true
+            ? List<Map<String, dynamic>>.from(response['data'] ?? [])
+            : [];
+      });
+    } catch (e) {
+      error = e.toString();
+    }
+
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
+  // ============================
+  // DELETE TECHNICIAN
+  // ============================
   Future<void> deleteTechnician(int id) async {
-    await DatabaseHelper.instance.deleteTechnician(id);
-    await loadTechnicians();
+    try {
+      final response = await ApiService.deleteTechnician(id);
+
+      if (response['status'] == true) {
+        await loadTechnicians();
+      } else {
+        showMsg(response['message'] ?? "Delete failed");
+      }
+    } catch (e) {
+      showMsg("Error: $e");
+    }
   }
 
   void showDeletePopup(int id) {
@@ -73,6 +106,13 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
     );
   }
 
+  void showMsg(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ============================
+  // ADD TECHNICIAN (API)
+  // ============================
   Future<void> openAddScreen() async {
     final result = await Navigator.push(
       context,
@@ -80,28 +120,20 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
         builder: (_) => AddTechnicianScreen(
           onSave: (data) async {
             try {
-              await DatabaseHelper.instance.insertTechnician({
+              await ApiService.createTechnician({
                 "name": data["name"],
                 "email": data["email"],
                 "phone": data["phone"],
                 "role": data["role"],
                 "jobs": data["jobs"],
                 "online": data["online"],
-              });
-
-              await DatabaseHelper.instance.insertUser({
-                "name": data["name"],
-                "email": data["email"],
                 "password": data["password"],
-                "role": "technician",
               });
 
               await loadTechnicians();
             } catch (e) {
               if (mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                showMsg("Error: $e");
               }
             }
           },
@@ -126,122 +158,147 @@ class _TechniciansScreenState extends State<TechniciansScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(14 * scale),
-          child: ListView(
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.groups, color: Colors.black, size: 24 * scale),
-                  SizedBox(width: 8 * scale),
-                  Text(
-                    "Technicians",
-                    style: TextStyle(
-                      fontSize: 20 * scale,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : error != null
+              ? ListView(
+                  children: [
+                    SizedBox(height: 200 * scale),
+                    Center(child: Text(error!)),
+                  ],
+                )
+              : ListView(
+                  children: [
+                    // HEADER
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.groups,
+                          color: Colors.black,
+                          size: 24 * scale,
+                        ),
+                        SizedBox(width: 8 * scale),
+                        Text(
+                          "Technicians",
+                          style: TextStyle(
+                            fontSize: 20 * scale,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: loadTechnicians,
+                          icon: Icon(
+                            Icons.refresh,
+                            color: Colors.black,
+                            size: 22 * scale,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: loadTechnicians,
-                    icon: Icon(
-                      Icons.refresh,
-                      color: Colors.black,
-                      size: 22 * scale,
-                    ),
-                  ),
-                ],
-              ),
 
-              SizedBox(height: 18 * scale),
+                    SizedBox(height: 18 * scale),
 
-              Text(
-                "Manage field leads and logistics teams",
-                style: TextStyle(
-                  color: const Color(0xFF6B7280),
-                  fontSize: 13 * scale,
-                ),
-              ),
-
-              SizedBox(height: 18 * scale),
-
-              GestureDetector(
-                onTap: openAddScreen,
-                child: Container(
-                  height: 52 * scale,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(AppUI.radiusLg),
-                  ),
-                  child: Center(
-                    child: Text(
-                      "+ Add Technician",
+                    Text(
+                      "Manage field leads and logistics teams",
                       style: TextStyle(
-                        fontSize: 16 * scale,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: const Color(0xFF6B7280),
+                        fontSize: 13 * scale,
                       ),
                     ),
-                  ),
-                ),
-              ),
 
-              SizedBox(height: 16 * scale),
+                    SizedBox(height: 18 * scale),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: statCard(
-                      "ACTIVE NOW",
-                      activeCount.toString(),
-                      scale,
+                    // ADD BUTTON
+                    GestureDetector(
+                      onTap: openAddScreen,
+                      child: Container(
+                        height: 52 * scale,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(AppUI.radiusLg),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "+ Add Technician",
+                            style: TextStyle(
+                              fontSize: 16 * scale,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 10 * scale),
-                  Expanded(
-                    child: statCard(
-                      "TOTAL LEADS",
-                      totalCount.toString(),
-                      scale,
+
+                    SizedBox(height: 16 * scale),
+
+                    // STATS
+                    Row(
+                      children: [
+                        Expanded(
+                          child: statCard(
+                            "ACTIVE NOW",
+                            activeCount.toString(),
+                            scale,
+                          ),
+                        ),
+                        SizedBox(width: 10 * scale),
+                        Expanded(
+                          child: statCard(
+                            "TOTAL LEADS",
+                            totalCount.toString(),
+                            scale,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
 
-              SizedBox(height: 16 * scale),
+                    SizedBox(height: 16 * scale),
 
-              if (technicians.isEmpty)
-                Container(
-                  padding: EdgeInsets.all(20 * scale),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppUI.radiusMd),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      "No Technicians Added",
-                      style: TextStyle(color: Color(0xFF6B7280)),
-                    ),
-                  ),
+                    // EMPTY STATE
+                    if (technicians.isEmpty)
+                      Container(
+                        padding: EdgeInsets.all(20 * scale),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(AppUI.radiusMd),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "No Technicians Added",
+                            style: TextStyle(color: Color(0xFF6B7280)),
+                          ),
+                        ),
+                      ),
+
+                    // LIST
+                    ...technicians.map((tech) {
+                      final id = tech["id"];
+                      final jobs = tech["jobs"];
+                      final online = tech["online"];
+
+                      return GestureDetector(
+                        onLongPress: () => showDeletePopup(
+                          id is int ? id : int.tryParse(id.toString()) ?? 0,
+                        ),
+                        child: TechnicianTile(
+                          name: tech["name"]?.toString() ?? "",
+                          email: tech["email"]?.toString() ?? "",
+                          phone: tech["phone"]?.toString() ?? "",
+                          jobs: jobs is int
+                              ? jobs
+                              : int.tryParse(jobs.toString()) ?? 0,
+                          online: online == 1 || online == "1",
+                        ),
+                      );
+                    }),
+                  ],
                 ),
-
-              ...technicians.map(
-                (tech) => GestureDetector(
-                  onLongPress: () => showDeletePopup(tech["id"]),
-                  child: TechnicianTile(
-                    name: tech["name"] ?? "",
-                    email: tech["email"] ?? "",
-                    phone: tech["phone"] ?? "",
-                    jobs: tech["jobs"] ?? 0,
-                    online: (tech["online"] ?? 0) == 1,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

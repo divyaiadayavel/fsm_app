@@ -40,7 +40,10 @@ class AuthController extends StateNotifier<AuthState> {
 
       return false;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: "Network error. Please try again",
+      );
       return false;
     }
   }
